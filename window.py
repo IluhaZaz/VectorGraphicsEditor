@@ -4,9 +4,16 @@ import svgwrite
 
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolBar, QAction
 from PyQt5.QtSvg import QSvgWidget
-from PyQt5.QtCore import QByteArray, Qt
+from PyQt5.QtCore import QByteArray, Qt, QPoint
 from PyQt5.QtGui import QMouseEvent
 import svgwrite.shapes
+
+
+class SvgShape:
+    def __init__(self, shape: str, obj, **params) -> None:
+        self.shape: str = shape
+        self.obj = obj
+        self.params = params
 
 
 class ToolBar(QToolBar):
@@ -60,6 +67,7 @@ class Canvas(QSvgWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
+        self.figures: list[SvgShape] = []
         
 
     def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
@@ -69,15 +77,24 @@ class Canvas(QSvgWidget):
             start = draw.start
             end = event.pos().x(), event.pos().y()
 
+            dist = ((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5
+            if dist < 3:
+                self.select_figure(event.pos())
+                return
+
             match draw.figure:
+
                 case "circle":
                     r = (((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5)//2
                     center = (start[0] + end[0])//2, (start[1] + end[1])//2
-                    draw.dwg.add(svgwrite.shapes.Circle(center=center, 
-                                                        r=r, 
-                                                        stroke=draw.stroke_color, 
-                                                        stroke_width=draw.width, 
-                                                        fill = draw.fill))
+                    circle = svgwrite.shapes.Circle(center=center, 
+                                                    r=r, 
+                                                    stroke=draw.stroke_color, 
+                                                    stroke_width=draw.width, 
+                                                    fill = draw.fill)
+                    draw.dwg.add(circle)
+                    self.figures.append(SvgShape("circle", circle, center=center, r=r))
+
                 case "rect":
                     size = (abs(start[0] - end[0]), abs(start[1] - end[1]))
                     if start[0] > end[0]:
@@ -90,18 +107,53 @@ class Canvas(QSvgWidget):
                             top_left = start[0], end[1]
                         else:
                             top_left = start
-                    draw.dwg.add(svgwrite.shapes.Rect(insert=top_left,
-                                                      size=size))
+                    rect = svgwrite.shapes.Rect(insert=top_left,
+                                                size=size,
+                                                stroke=draw.stroke_color, 
+                                                stroke_width=draw.width, 
+                                                fill = draw.fill)
+                    draw.dwg.add(rect)
+                    self.figures.append(SvgShape("rect", rect, insert=top_left, size=size))
+
                 case "line":
-                    draw.dwg.add(svgwrite.shapes.Line(start=start,
-                                                      end=end,
-                                                      stroke=draw.stroke_color,
-                                                      stroke_width=draw.width))
+                    line = svgwrite.shapes.Line(start=start,
+                                                end=end,
+                                                stroke=draw.stroke_color,
+                                                stroke_width=draw.width)
+                    draw.dwg.add(line)
+                    self.figures.append(SvgShape("line", line, start=start, end=end))
                     
             self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
          self.parent().drawer.start = (event.pos().x(), event.pos().y())
+
+    def select_figure(self, pos: QPoint):
+        for figure in self.figures[::-1]:
+            match figure.shape:
+                case'circle':
+                    center = figure.params["center"]
+                    r = figure.params['r']
+                    if ((center[0] - pos.x()) ** 2 + (center[1] - pos.y()) ** 2) ** 0.5 <= r:
+                        print(f"Circle selected: center={center}, radius={r}")
+                        return
+
+                case 'rect':
+                    top_left = figure.params['insert']
+                    size = figure.params['size']
+                    if top_left[0] <= pos.x() <= top_left[0] + size[0] and top_left[1] <= pos.y() <= top_left[1] + size[1]:
+                        print(f"Rectangle selected: top_left={top_left}, size={size}")
+                        return
+
+                case 'line':
+                    start = figure.params['start']
+                    end = figure.params['end']
+
+                    tolerance = 3
+                    distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+                    if distance_to_line <= tolerance:
+                        print(f"Line selected: start={start}, end={end}")
+                        return
 
 
 class VectorGraphicsEditor(QMainWindow):
@@ -122,7 +174,7 @@ class Drawer:
         self.dwg = svgwrite.Drawing(profile="full", size=size)
         self.figure = None
         self.stroke_color = "black"
-        self.fill = "black"
+        self.fill = "pink"
         self.width = 3
         self.start = None
 
