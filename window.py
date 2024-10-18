@@ -129,6 +129,17 @@ class Canvas(QSvgWidget):
          self.parent().drawer.start = (event.pos().x(), event.pos().y())
 
     def select_figure(self, pos: QPoint):
+        tolerance = 3
+        
+        tl_select, select_size = None, None
+        select_rect = None
+        draw: Drawer = self.parent().drawer
+
+        if draw.selected:
+            draw.dwg.elements.remove(draw.selected.params["selector"])
+            draw.selected.params.pop("selector")
+            draw.selected = None
+
         for figure in self.figures[::-1]:
             match figure.shape:
                 case'circle':
@@ -136,24 +147,74 @@ class Canvas(QSvgWidget):
                     r = figure.params['r']
                     if ((center[0] - pos.x()) ** 2 + (center[1] - pos.y()) ** 2) ** 0.5 <= r:
                         print(f"Circle selected: center={center}, radius={r}")
-                        return
+
+                        tl_select = center[0] - r, center[1] - r
+                        select_size = (2*r, 2*r)
+                        select_rect = svgwrite.shapes.Rect(insert=tl_select,
+                                                size=select_size,
+                                                stroke="blue",
+                                                fill="none"
+                                                )
+                        draw.selected = figure
+                        break
 
                 case 'rect':
                     top_left = figure.params['insert']
                     size = figure.params['size']
                     if top_left[0] <= pos.x() <= top_left[0] + size[0] and top_left[1] <= pos.y() <= top_left[1] + size[1]:
                         print(f"Rectangle selected: top_left={top_left}, size={size}")
-                        return
+
+                        tl_select = top_left[0] - 10, top_left[1] - 10
+                        select_size = (size[0] + 20, size[1] + 20)
+                        select_rect = svgwrite.shapes.Rect(insert=tl_select,
+                                                size=select_size,
+                                                stroke="blue",
+                                                fill="none"
+                                                )
+
+                        draw.selected = figure
+                        break
 
                 case 'line':
                     start = figure.params['start']
                     end = figure.params['end']
 
-                    tolerance = 3
                     distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
                     if distance_to_line <= tolerance:
                         print(f"Line selected: start={start}, end={end}")
-                        return
+
+                        if start[0] > end[0]:
+                            if start[1] > end[1]:
+                                tl_select = end
+                            else:
+                                tl_select = end[0], start[1]
+                        else:
+                            if start[1] > end[1]:
+                                tl_select = start[0], end[1]
+                            else:
+                                tl_select = start
+                        select_size = (abs(start[0] - end[0]), abs(start[1] - end[1]))
+
+                        select_rect = svgwrite.shapes.Rect(insert=tl_select,
+                                                size=select_size,
+                                                stroke="blue",
+                                                fill="none"
+                                                )
+
+                        draw.selected = figure
+                        break
+
+        if select_rect:
+            draw.dwg.add(select_rect)
+            draw.selected.params["selector"] = select_rect
+            
+        self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+
+    def delete_figure(self, figure: SvgShape):
+        draw: Drawer = self.parent().drawer
+        if draw.selected is not None:
+            draw.dwg.elements.remove(figure.obj)
+            self.figures.remove(figure) 
 
 
 class VectorGraphicsEditor(QMainWindow):
@@ -177,6 +238,7 @@ class Drawer:
         self.fill = "pink"
         self.width = 3
         self.start = None
+        self.selected: SvgShape = None
 
 
 class Ui_MainWindow:
