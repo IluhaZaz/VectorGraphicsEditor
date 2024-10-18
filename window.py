@@ -2,7 +2,7 @@ import sys
 
 import svgwrite
 
-from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolBar, QAction
+from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QToolBar, QPushButton, QAction, QTextEdit, QSlider
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, Qt, QPoint
 from PyQt5.QtGui import QMouseEvent
@@ -16,19 +16,49 @@ class SvgShape:
         self.params = params
 
 
+class ColorTextEdit(QTextEdit):
+    def __init__(self, parent):
+        super().__init__("#", parent)
+        self.limit = 7
+
+    def keyPressEvent(self, event):
+        if len(self.toPlainText()) < self.limit or event.key() in (16777219, 16777223):
+            super().keyPressEvent(event)
+
+
 class ToolBar(QToolBar):
 
     def __init__(self, title, parent):
         super().__init__(title, parent)
 
-        action_save = QAction("Save", self)
-        action_save.triggered.connect(self.on_save)
+        self.editor: VectorGraphicsEditor = parent
 
-        action_close = QAction("Close", self)
-        action_close.triggered.connect(self.on_close)
+        save = QPushButton("Save", self)
+        save.clicked.connect(self.on_save)
+        self.addWidget(save)
 
-        self.addActions((action_save, action_close))
-    
+        close = QPushButton("Close", self)
+        close.clicked.connect(self.on_close)
+        self.addWidget(close)
+
+        self.stroke_color = QPushButton("Stroke color", self)
+        self.stroke_color.clicked.connect(self.change_stroke_color)
+        self.addWidget(self.stroke_color)
+
+        self.fill_color = QPushButton("Fill color", self)
+        self.fill_color.clicked.connect(self.change_fill_color)
+        self.addWidget(self.fill_color)
+
+        self.color_field = ColorTextEdit(self)
+        self.color_field.setFixedSize(90, 30)
+        self.addWidget(self.color_field)
+
+        self.opacity = QSlider(Qt.Orientation.Horizontal, self)
+        self.opacity.setMinimum(0)
+        self.opacity.setMaximum(100)
+        self.opacity.setValue(100)
+        self.opacity.setFixedWidth(100)
+        self.addWidget(self.opacity)
 
     def on_save(self):
         pass
@@ -36,11 +66,27 @@ class ToolBar(QToolBar):
     def on_close(self):
         window.close()
 
+    def change_stroke_color(self):
+        opacity = self.opacity.value()/100
+        color = self.color_field.toPlainText()
+        self.stroke_color.setStyleSheet(f"background: {color}; opacity: {opacity};")
+        self.editor.drawer.stroke_color = color
+        self.editor.drawer.stroke_opacity = opacity
+
+    def change_fill_color(self):
+        opacity = self.opacity.value()/100
+        color = self.color_field.toPlainText()
+        self.fill_color.setStyleSheet(f"background: {color}; opacity: {opacity};")
+        self.editor.drawer.fill = color
+        self.editor.drawer.fill_opacity = opacity
+
 
 class FiguresBar(QToolBar):
 
     def __init__(self, title, parent):
         super().__init__(title, parent)
+
+        self.editor: VectorGraphicsEditor = parent
 
         action_add_rect = QAction("Add rectangle", self)
         action_add_rect.triggered.connect(self.add_rect)
@@ -51,16 +97,22 @@ class FiguresBar(QToolBar):
         action_add_line = QAction("Add line", self)
         action_add_line.triggered.connect(self.add_line)
 
-        self.addActions((action_add_rect, action_add_circle, action_add_line))
+        action_delete_figure = QAction("Delete figure", self)
+        action_delete_figure.triggered.connect(self.delete_figure)
+
+        self.addActions((action_add_rect, action_add_circle, action_add_line, action_delete_figure))
 
     def add_rect(self):
-        self.parent().drawer.figure = "rect"
+        self.editor.drawer.figure = "rect"
 
     def add_circle(self):
-        self.parent().drawer.figure = "circle"
+        self.editor.drawer.figure = "circle"
 
     def add_line(self):
-        self.parent().drawer.figure = "line"
+        self.editor.drawer.figure = "line"
+
+    def delete_figure(self):
+        self.editor.canvas.delete_figure(self.editor.drawer.selected)
 
 
 class Canvas(QSvgWidget):
@@ -91,7 +143,9 @@ class Canvas(QSvgWidget):
                                                     r=r, 
                                                     stroke=draw.stroke_color, 
                                                     stroke_width=draw.width, 
-                                                    fill = draw.fill)
+                                                    fill = draw.fill,
+                                                    fill_opacity=draw.fill_opacity,
+                                                    stroke_opacity=draw.stroke_opacity)
                     draw.dwg.add(circle)
                     self.figures.append(SvgShape("circle", circle, center=center, r=r))
 
@@ -111,7 +165,9 @@ class Canvas(QSvgWidget):
                                                 size=size,
                                                 stroke=draw.stroke_color, 
                                                 stroke_width=draw.width, 
-                                                fill = draw.fill)
+                                                fill = draw.fill,
+                                                fill_opacity=draw.fill_opacity,
+                                                stroke_opacity=draw.stroke_opacity)
                     draw.dwg.add(rect)
                     self.figures.append(SvgShape("rect", rect, insert=top_left, size=size))
 
@@ -119,7 +175,8 @@ class Canvas(QSvgWidget):
                     line = svgwrite.shapes.Line(start=start,
                                                 end=end,
                                                 stroke=draw.stroke_color,
-                                                stroke_width=draw.width)
+                                                stroke_width=draw.width,
+                                                stroke_opacity=draw.stroke_opacity)
                     draw.dwg.add(line)
                     self.figures.append(SvgShape("line", line, start=start, end=end))
                     
@@ -213,8 +270,12 @@ class Canvas(QSvgWidget):
     def delete_figure(self, figure: SvgShape):
         draw: Drawer = self.parent().drawer
         if draw.selected is not None:
+            draw.dwg.elements.remove(draw.selected.params["selector"])
             draw.dwg.elements.remove(figure.obj)
-            self.figures.remove(figure) 
+            self.figures.remove(figure)
+            draw.selected = None
+
+        self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
 
 
 class VectorGraphicsEditor(QMainWindow):
@@ -237,6 +298,8 @@ class Drawer:
         self.stroke_color = "black"
         self.fill = "pink"
         self.width = 3
+        self.stroke_opacity = 1
+        self.fill_opacity = 1
         self.start = None
         self.selected: SvgShape = None
 
