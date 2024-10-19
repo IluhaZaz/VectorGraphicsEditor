@@ -1,7 +1,11 @@
-from PyQt5.QtWidgets import QToolBar, QPushButton, QSlider, QMainWindow
-from PyQt5.QtCore import Qt
+import xml.etree.ElementTree as ET
+import svgwrite
+import svgwrite.container
 
-from components.svg_utils import ColorTextEdit
+from PyQt5.QtWidgets import QToolBar, QPushButton, QSlider, QMainWindow, QFileDialog
+from PyQt5.QtCore import Qt, QByteArray
+
+from components.svg_utils import ColorTextEdit, SvgShape, Drawer
 
 
 class ToolBar(QToolBar):
@@ -11,9 +15,17 @@ class ToolBar(QToolBar):
 
         self.editor: QMainWindow = parent
 
+        open = QPushButton("Open", self)
+        open.clicked.connect(self.open)
+        self.addWidget(open)
+
         save = QPushButton("Save", self)
         save.clicked.connect(self.on_save)
         self.addWidget(save)
+
+        save_as = QPushButton("Save as", self)
+        save_as.clicked.connect(self.on_save_as)
+        self.addWidget(save_as)
 
         close = QPushButton("Close", self)
         close.clicked.connect(self.on_close)
@@ -38,11 +50,108 @@ class ToolBar(QToolBar):
         self.opacity.setFixedWidth(100)
         self.addWidget(self.opacity)
 
+    def open(self):
+        options = QFileDialog.Options()
+        filename, _ = QFileDialog.getOpenFileName(self, "Открыть файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
+        if filename:
+            tree = ET.parse(filename)
+            root = tree.getroot()
+
+            dwg = svgwrite.Drawing(profile='full', size=self.editor.drawer.size)
+            for shape in root:
+                if shape.tag == '{http://www.w3.org/2000/svg}circle':
+                    cx = int(shape.attrib['cx'])
+                    cy = int(shape.attrib['cy'])
+                    r = float(shape.attrib['r'])
+                    fill = shape.attrib.get('fill', 'none')
+                    fill_opacity = float(shape.attrib.get('fill-opacity', 1))
+                    stroke = shape.attrib.get('stroke', '#FFFFFF')
+                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
+                    stroke_width = int(shape.attrib.get('stroke-width', 3))
+
+                    circle = dwg.circle(center=(cx, cy), r=r, 
+                                       fill=fill, 
+                                       stroke=stroke, 
+                                       fill_opacity=fill_opacity, 
+                                       stroke_opacity=stroke_opacity, 
+                                       stroke_width=stroke_width)
+
+                    dwg.add(circle)
+                    self.editor.canvas.figures.append(SvgShape("circle", circle, center=(cx, cy), r=r))
+
+                elif shape.tag == '{http://www.w3.org/2000/svg}rect':
+                    x = int(shape.attrib.get('x', 0))
+                    y = int(shape.attrib.get('y', 0))
+                    width = int(shape.attrib.get('width', 0))
+                    height = int(shape.attrib.get('height', 0))
+                    fill = shape.attrib.get('fill', 'none')
+                    fill_opacity = float(shape.attrib.get('fill-opacity', 1))
+                    stroke = shape.attrib.get('stroke', '#FFFFFF')
+                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
+                    stroke_width = int(shape.attrib.get('stroke-width', 3))
+
+                    rect = dwg.rect(insert=(x, y), size=(width, height),
+                                    fill=fill, 
+                                    stroke=stroke, 
+                                    fill_opacity=fill_opacity, 
+                                    stroke_opacity=stroke_opacity, 
+                                    stroke_width=stroke_width)
+                    dwg.add(rect)
+                    self.editor.canvas.figures.append(SvgShape("rect", rect, insert=(x, y), size=(width, height)))
+
+                elif shape.tag == '{http://www.w3.org/2000/svg}line':
+                    x1 = int(shape.attrib.get('x1', 0))
+                    y1 = int(shape.attrib.get('y1', 0))
+                    x2 = int(shape.attrib.get('x2', 0))
+                    y2 = int(shape.attrib.get('y2', 0))
+                    stroke = shape.attrib.get('stroke', '#FFFFFF')
+                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
+                    stroke_width = int(shape.attrib.get('stroke-width', 3))
+
+                    line = dwg.line(start=(x1, y1), end=(x2, y2), 
+                                    stroke=stroke, 
+                                    stroke_opacity=stroke_opacity, 
+                                    stroke_width=stroke_width
+                                    )
+                    dwg.add(line)
+                    self.editor.canvas.figures.append(SvgShape("line", line, start=(x1, y1), end=(x2, y2)))
+            self.editor.drawer.dwg = dwg
+
+            self.editor.canvas.load(QByteArray(self.editor.drawer.dwg.tostring().encode('utf-8')))
+
+
+    def on_save_as(self):
+        options = QFileDialog.Options()
+        filename, _ = QFileDialog.getSaveFileName(self, "Сохранить файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
+        
+        if filename:
+            draw: Drawer = self.editor.drawer
+            if draw.selected:
+                draw.dwg.elements.remove(draw.selected.params["selector"])
+                draw.selected.params.pop("selector")
+                draw.selected = None
+
+            draw.dwg.filename = filename
+            draw.dwg.save()
+
     def on_save(self):
-        pass
+        draw: Drawer = self.editor.drawer
+        if draw.dwg.filename == "noname.svg":
+            options = QFileDialog.Options()
+            filename, _ = QFileDialog.getSaveFileName(self, "Сохранить файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
+            draw.dwg.filename = filename
+
+        if draw.selected:
+            draw.dwg.elements.remove(draw.selected.params["selector"])
+            draw.selected.params.pop("selector")
+            draw.selected = None
+            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+        
+        draw.dwg.save()
 
     def on_close(self):
-        self.parent().close()
+        self.editor.close()
 
     def change_stroke_color(self):
         opacity = self.opacity.value()/100

@@ -23,8 +23,8 @@ class ColorTextEdit(QTextEdit):
 class Drawer:
 
     def __init__(self, parent) -> None:
-        size = parent.canvas.size().width(), parent.canvas.size().height()
-        self.dwg = svgwrite.Drawing(profile="full", size=size)
+        self.size = parent.canvas.size().width(), parent.canvas.size().height()
+        self.dwg = svgwrite.Drawing(profile="full", size=self.size)
         self.figure = None
         self.stroke_color = "black"
         self.fill = "white"
