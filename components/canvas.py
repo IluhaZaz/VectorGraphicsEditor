@@ -62,6 +62,50 @@ class Canvas(QSvgWidget):
                 draw.dwg.add(line)
                 self.figures.append(SvgShape("line", line, start=start, end=end))
         
+    def move_figure(self, event: QMouseEvent):
+        draw: Drawer = self.parent().drawer
+
+        figure = self.find_clicked_figure(QPoint(*draw.start))[0]
+        if figure == draw.selected:
+            match(figure.shape):
+                case "circle":
+                    dx = event.pos().x() - draw.start[0]
+                    dy = event.pos().y() - draw.start[1]
+
+                    center = figure.params["center"]
+                    figure.params["center"] = (center[0] + dx, center[1] + dy)
+                    figure.obj.attribs["cx"] = center[0] + dx
+                    figure.obj.attribs["cy"] = center[1] + dy
+
+                    figure.params["selector"].attribs["x"] += dx
+                    figure.params["selector"].attribs["y"] += dy
+                case "rect":
+                    dx = event.pos().x() - draw.start[0]
+                    dy = event.pos().y() - draw.start[1]
+
+                    insert = figure.params["insert"]
+                    figure.params["insert"] = (insert[0] + dx, insert[1] + dy)
+                    figure.obj.attribs["x"] += dx
+                    figure.obj.attribs["y"] += dy
+
+                    figure.params["selector"].attribs["x"] += dx
+                    figure.params["selector"].attribs["y"] += dy
+                case "line":
+                    dx = event.pos().x() - draw.start[0]
+                    dy = event.pos().y() - draw.start[1]
+
+                    start = figure.params["start"]
+                    figure.params["start"] = (start[0] + dx, start[1] + dy)
+                    end = figure.params["end"]
+                    figure.params["end"] = (end[0] + dx, end[1] + dy)
+
+                    figure.obj.attribs["x1"] += dx
+                    figure.obj.attribs["y1"] += dy
+                    figure.obj.attribs["x2"] += dx
+                    figure.obj.attribs["y2"] += dy
+
+                    figure.params["selector"].attribs["x"] += dx
+                    figure.params["selector"].attribs["y"] += dy
 
     def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -73,24 +117,19 @@ class Canvas(QSvgWidget):
             dist = ((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5
             if dist < 3:
                 self.select_figure(event.pos())
-                return
             
-            # if draw.selected:
-            #     figure = self.find_clicked_figure(draw.start)[0]
-            #     if figure == draw.selected:
-            #         dx = event.pos()[0] - draw.start[0]
-            #         dy = event.pos()[1] - draw.start[1]
-                    
-            #         self.delete_figure()
+            elif draw.selected:
+                self.move_figure(event)                            
 
-            self.add_figure(start, end)
+            else:
+                self.add_figure(start, end)
                     
             self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
          self.parent().drawer.start = (event.pos().x(), event.pos().y())
 
-    def find_clicked_figure(self, pos: tuple[int]):
+    def find_clicked_figure(self, pos: QPoint):
 
         tolerance = 3
         
