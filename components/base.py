@@ -20,7 +20,7 @@ class VectorGraphicsEditor(QMainWindow):
 class Ui_MainWindow:
     
     def setup_ui(self, main_window: VectorGraphicsEditor):
-        main_window.setWindowTitle("VectorGraphicsEditor")
+        main_window.setWindowTitle("VectorCanvas")
 
         main_window.resize(QApplication.primaryScreen().size())
 
@@ -30,11 +30,21 @@ class Ui_MainWindow:
         main_window.tool_bar = ToolBar("Tool bar", parent=main_window)
         main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea, main_window.tool_bar)
 
-        main_window.figures_bar = FiguresBar("Tool bar", parent=main_window)
+        main_window.figures_bar = FiguresBar("Figures bar", parent=main_window)
         main_window.addToolBar(Qt.ToolBarArea.RightToolBarArea, main_window.figures_bar)
 
         main_window.canvas = Canvas(main_window)
-        main_window.canvas.setStyleSheet("border:5px solid black;")
         main_window.canvas.setGeometry(70, 100, main_window.size().width() - 200, main_window.size().height() - 300)
         
         main_window.drawer = Drawer(main_window)
+
+        main_window.central_widget.setStyleSheet("background: rgba(0, 0, 0, 0.7);")
+        main_window.canvas.setStyleSheet("background: white; border:5px solid rgba(240,128,128, 0.8);")
+        main_window.tool_bar.setStyleSheet("""QToolBar{background: rgba(0, 0, 0, 0.8); border:2px solid rgba(240,128,128, 0.8);}
+                                           QPushButton{background: rgba(240,128,128, 0.8);}
+                                           ColorTextEdit{background: rgba(240,128,128, 0.8);}
+                                           QSlider::handle:horizontal {background: rgba(240,128,128, 0.8); border-radius: 3px;}
+                                           """)
+        main_window.figures_bar.setStyleSheet("""QToolBar{background: rgba(0, 0, 0, 0.8); border:2px solid rgba(240,128,128, 0.8);}
+                                              QPushButton{background: rgba(240,128,128, 0.8)}
+                                              """)
