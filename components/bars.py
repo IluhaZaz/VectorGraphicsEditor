@@ -2,10 +2,10 @@ import xml.etree.ElementTree as ET
 import svgwrite
 import svgwrite.container
 
-from PyQt5.QtWidgets import QToolBar, QPushButton, QSlider, QMainWindow, QFileDialog
-from PyQt5.QtCore import Qt, QByteArray
+from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog
+from PyQt5.QtCore import QByteArray
 
-from components.svg_utils import ColorTextEdit, SvgShape, Drawer
+from components.svg_utils import SvgShape, Drawer
 
 
 class ToolBar(QToolBar):
@@ -38,17 +38,6 @@ class ToolBar(QToolBar):
         self.fill_color = QPushButton("Fill color", self)
         self.fill_color.clicked.connect(self.change_fill_color)
         self.addWidget(self.fill_color)
-
-        self.color_field = ColorTextEdit(self)
-        self.color_field.setFixedSize(90, 30)
-        self.addWidget(self.color_field)
-
-        self.opacity = QSlider(Qt.Orientation.Horizontal, self)
-        self.opacity.setMinimum(0)
-        self.opacity.setMaximum(100)
-        self.opacity.setValue(100)
-        self.opacity.setFixedWidth(100)
-        self.addWidget(self.opacity)
 
     def open(self):
         options = QFileDialog.Options()
@@ -146,7 +135,6 @@ class ToolBar(QToolBar):
             draw.selected.params.pop("selector")
             draw.selected = None
             self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
-            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
         
         draw.dwg.save()
 
@@ -154,16 +142,20 @@ class ToolBar(QToolBar):
         self.editor.close()
 
     def change_stroke_color(self):
-        opacity = self.opacity.value()/100
-        color = self.color_field.toPlainText()
-        self.stroke_color.setStyleSheet(f"background: {color}; opacity: {opacity};")
+        color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        opacity = color.alphaF()
+        color = "rgb" + str(color.getRgb()[:-1])
+
+        self.stroke_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.stroke_color = color
         self.editor.drawer.stroke_opacity = opacity
 
     def change_fill_color(self):
-        opacity = self.opacity.value()/100
-        color = self.color_field.toPlainText()
-        self.fill_color.setStyleSheet(f"background: {color}; opacity: {opacity};")
+        color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        opacity = color.alphaF()
+        color = "rgb" + str(color.getRgb()[:-1])
+
+        self.fill_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.fill = color
         self.editor.drawer.fill_opacity = opacity
 
