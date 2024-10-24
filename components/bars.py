@@ -176,6 +176,9 @@ class FiguresBar(QToolBar):
         self.add_line_btn = QToggleButton("Add line", self)
         self.addWidget(self.add_line_btn)
 
+        self.add_polyline_btn = QToggleButton("Add polyline", self)
+        self.addWidget(self.add_polyline_btn)
+
         delete_figure = QPushButton("Delete figure", self)
         delete_figure.clicked.connect(self.delete_figure)
         self.addWidget(delete_figure)
@@ -183,8 +186,9 @@ class FiguresBar(QToolBar):
         self.add_rect_btn.clicked.connect(self.add_rect)
         self.add_circle_btn.clicked.connect(self.add_circle)
         self.add_line_btn.clicked.connect(self.add_line)
+        self.add_polyline_btn.clicked.connect(self.add_polyline)
 
-        self.buttons: list[QToggleButton] = [self.add_rect_btn, self.add_circle_btn, self.add_line_btn]
+        self.buttons: list[QToggleButton] = [self.add_rect_btn, self.add_circle_btn, self.add_line_btn, self.add_polyline_btn]
 
     def add_rect(self):
         if self.add_rect_btn.isChecked():
@@ -217,6 +221,19 @@ class FiguresBar(QToolBar):
             self.editor.drawer.figure = None
         for button in self.buttons:
             if button != self.add_line_btn:
+                button.setChecked(False)
+    
+    def add_polyline(self):
+        self.editor.canvas.points.clear()
+        
+        if self.add_polyline_btn.isChecked():
+            self.add_polyline_btn.setChecked(True)
+            self.editor.drawer.figure = "polyline"
+        else:
+            self.add_polyline_btn.setChecked(False)
+            self.editor.drawer.figure = None
+        for button in self.buttons:
+            if button != self.add_polyline_btn:
                 button.setChecked(False)
 
     def delete_figure(self):

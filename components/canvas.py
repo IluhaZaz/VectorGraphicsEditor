@@ -4,6 +4,7 @@ import svgwrite.shapes
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, Qt, QPoint
+from copy import copy
 
 from components.svg_utils import Drawer, SvgShape
 
@@ -13,6 +14,7 @@ class Canvas(QSvgWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.figures: list[SvgShape] = []
+        self.points: list[int] = []
 
     def add_figure(self, start: tuple[int], end: tuple[int]):
         draw: Drawer = self.parent().drawer
@@ -61,6 +63,19 @@ class Canvas(QSvgWidget):
                                             stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(line)
                 self.figures.append(SvgShape("line", line, start=start, end=end))
+            
+            case "polyline":
+                if self.points:
+                    draw.dwg.elements.remove(self.figures.pop(-1).obj)
+                self.points.append(end)
+
+                polyline = svgwrite.shapes.Polyline(points=self.points, 
+                                                    stroke=draw.stroke_color,
+                                                    stroke_width=draw.width,
+                                                    stroke_opacity=draw.stroke_opacity,
+                                                    fill="none")
+                draw.dwg.add(polyline)
+                self.figures.append(SvgShape("polyline", polyline, points=copy(self.points)))
         
     def move_figure(self, event: QMouseEvent):
         draw: Drawer = self.parent().drawer
@@ -115,7 +130,7 @@ class Canvas(QSvgWidget):
             end = event.pos().x(), event.pos().y()
 
             dist = ((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5
-            if dist < 3:
+            if dist < 3 and draw.figure != "polyline":
                 self.select_figure(event.pos())
             
             elif draw.selected:
@@ -128,7 +143,7 @@ class Canvas(QSvgWidget):
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
          self.parent().drawer.start = (event.pos().x(), event.pos().y())
-
+         
     def find_clicked_figure(self, pos: QPoint):
 
         tolerance = 3
@@ -200,6 +215,38 @@ class Canvas(QSvgWidget):
 
                         res_fig = figure
                         break
+                case "polyline":
+                    points = figure.params["points"]
+                    tl_select = list(points[0])
+                    br_select = list(points[0])
+                    is_clicked = False
+
+                    for i in range(len(points) - 1):
+                        start = points[i]
+                        end = points[i + 1]
+
+                        tl_select[0] = min(tl_select[0], end[0])
+                        tl_select[1] = min(tl_select[1], end[1])
+
+                        br_select[0] = max(br_select[0], end[0])
+                        br_select[1] = max(br_select[1], end[1])
+
+                        distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+                        if distance_to_line <= tolerance:
+                            print(f"Polyine selected: points={points}")
+                            is_clicked = True
+                    if is_clicked:
+                        res_fig = figure
+                        select_size = br_select[0] - tl_select[0], br_select[1] - tl_select[1]
+                        select_rect = svgwrite.shapes.Rect(insert=tl_select,
+                                                size=select_size,
+                                                stroke="blue",
+                                                fill="none"
+                                                )
+                    break
+
+
+
         return res_fig, select_rect
 
     def select_figure(self, pos: QPoint):
