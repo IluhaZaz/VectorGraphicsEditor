@@ -1,6 +1,6 @@
 import svgwrite
 
-from PyQt5.QtWidgets import QTextEdit
+from PyQt5.QtWidgets import QTextEdit, QPushButton
 
 
 class SvgShape:
@@ -8,16 +8,6 @@ class SvgShape:
         self.shape: str = shape
         self.obj = obj
         self.params = params
-
-
-class ColorTextEdit(QTextEdit):
-    def __init__(self, parent):
-        super().__init__("#", parent)
-        self.limit = 7
-
-    def keyPressEvent(self, event):
-        if len(self.toPlainText()) < self.limit or event.key() in (16777219, 16777223):
-            super().keyPressEvent(event)
 
 
 class Drawer:
@@ -33,3 +23,12 @@ class Drawer:
         self.fill_opacity = 0
         self.start = None
         self.selected: SvgShape = None
+
+
+class QToggleButton(QPushButton):
+
+    def __init__(self, text, parent):
+        super().__init__(text, parent)
+
+        self.setCheckable(True)
+        self.setChecked(False)

@@ -2,10 +2,10 @@ import xml.etree.ElementTree as ET
 import svgwrite
 import svgwrite.container
 
-from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog
+from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog, QButtonGroup
 from PyQt5.QtCore import QByteArray
 
-from components.svg_utils import SvgShape, Drawer
+from components.svg_utils import SvgShape, Drawer, QToggleButton
 
 
 class ToolBar(QToolBar):
@@ -167,30 +167,57 @@ class FiguresBar(QToolBar):
 
         self.editor: QMainWindow = parent
 
-        add_rect = QPushButton("Add rectangle", self)
-        add_rect.clicked.connect(self.add_rect)
-        self.addWidget(add_rect)
+        self.add_rect_btn = QToggleButton("Add rectangle", self)
+        self.addWidget(self.add_rect_btn)
 
-        add_circle = QPushButton("Add circle", self)
-        add_circle.clicked.connect(self.add_circle)
-        self.addWidget(add_circle)
+        self.add_circle_btn = QToggleButton("Add circle", self)
+        self.addWidget(self.add_circle_btn)
 
-        add_line = QPushButton("Add line", self)
-        add_line.clicked.connect(self.add_line)
-        self.addWidget(add_line)
+        self.add_line_btn = QToggleButton("Add line", self)
+        self.addWidget(self.add_line_btn)
 
         delete_figure = QPushButton("Delete figure", self)
         delete_figure.clicked.connect(self.delete_figure)
         self.addWidget(delete_figure)
 
+        self.add_rect_btn.clicked.connect(self.add_rect)
+        self.add_circle_btn.clicked.connect(self.add_circle)
+        self.add_line_btn.clicked.connect(self.add_line)
+
+        self.buttons: list[QToggleButton] = [self.add_rect_btn, self.add_circle_btn, self.add_line_btn]
+
     def add_rect(self):
-        self.editor.drawer.figure = "rect"
+        if self.add_rect_btn.isChecked():
+            self.add_rect_btn.setChecked(True)
+            self.editor.drawer.figure = "rect"
+        else:
+            self.add_rect_btn.setChecked(False)
+            self.editor.drawer.figure = None
+        for button in self.buttons:
+            if button != self.add_rect_btn:
+                button.setChecked(False)
 
     def add_circle(self):
-        self.editor.drawer.figure = "circle"
+        if self.add_circle_btn.isChecked():
+            self.add_circle_btn.setChecked(True)
+            self.editor.drawer.figure = "circle"
+        else:
+            self.add_circle_btn.setChecked(False)
+            self.editor.drawer.figure = None
+        for button in self.buttons:
+            if button != self.add_circle_btn:
+                button.setChecked(False)
 
     def add_line(self):
-        self.editor.drawer.figure = "line"
+        if self.add_line_btn.isChecked():
+            self.add_line_btn.setChecked(True)
+            self.editor.drawer.figure = "line"
+        else:
+            self.add_line_btn.setChecked(False)
+            self.editor.drawer.figure = None
+        for button in self.buttons:
+            if button != self.add_line_btn:
+                button.setChecked(False)
 
     def delete_figure(self):
         self.editor.canvas.delete_figure(self.editor.drawer.selected)
