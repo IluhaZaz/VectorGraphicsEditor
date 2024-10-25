@@ -82,11 +82,11 @@ class Canvas(QSvgWidget):
 
         figure = self.find_clicked_figure(QPoint(*draw.start))[0]
         if figure == draw.selected:
+            dx = event.pos().x() - draw.start[0]
+            dy = event.pos().y() - draw.start[1]
             match(figure.shape):
                 case "circle":
-                    dx = event.pos().x() - draw.start[0]
-                    dy = event.pos().y() - draw.start[1]
-
+                    
                     center = figure.params["center"]
                     figure.params["center"] = (center[0] + dx, center[1] + dy)
                     figure.obj.attribs["cx"] = center[0] + dx
@@ -95,8 +95,6 @@ class Canvas(QSvgWidget):
                     figure.params["selector"].attribs["x"] += dx
                     figure.params["selector"].attribs["y"] += dy
                 case "rect":
-                    dx = event.pos().x() - draw.start[0]
-                    dy = event.pos().y() - draw.start[1]
 
                     insert = figure.params["insert"]
                     figure.params["insert"] = (insert[0] + dx, insert[1] + dy)
@@ -106,8 +104,6 @@ class Canvas(QSvgWidget):
                     figure.params["selector"].attribs["x"] += dx
                     figure.params["selector"].attribs["y"] += dy
                 case "line":
-                    dx = event.pos().x() - draw.start[0]
-                    dy = event.pos().y() - draw.start[1]
 
                     start = figure.params["start"]
                     figure.params["start"] = (start[0] + dx, start[1] + dy)
@@ -121,6 +117,19 @@ class Canvas(QSvgWidget):
 
                     figure.params["selector"].attribs["x"] += dx
                     figure.params["selector"].attribs["y"] += dy
+                case "polyline":
+
+                    points = figure.params["points"]
+
+                    for i in range(len(points)):
+                        points[i] = (points[i][0] + dx, points[i][1] + dy)
+
+                    figure.obj.points = points
+                    points = [str(p) for p in points]
+                    figure.obj.attribs["points"] = " ".join(points)
+                    figure.params["selector"].attribs["x"] += dx
+                    figure.params["selector"].attribs["y"] += dy
+
 
     def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
         if event.button() == Qt.MouseButton.LeftButton:

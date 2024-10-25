@@ -104,6 +104,24 @@ class ToolBar(QToolBar):
                                     )
                     dwg.add(line)
                     self.editor.canvas.figures.append(SvgShape("line", line, start=(x1, y1), end=(x2, y2)))
+                elif shape.tag == "{http://www.w3.org/2000/svg}polyline":
+                    points = shape.attrib.get('points', [])
+
+                    points = points.split()
+                    points = [point.split(',') for point in points]
+                    points = [tuple(map(int, p)) for p in points]
+
+                    stroke = shape.attrib.get('stroke', '#FFFFFF')
+                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
+                    stroke_width = int(shape.attrib.get('stroke-width', 3))
+                    polyline = svgwrite.shapes.Polyline(points=points, 
+                                                    stroke=stroke,
+                                                    stroke_width=stroke_width,
+                                                    stroke_opacity=stroke_opacity,
+                                                    fill="none")
+                    dwg.add(polyline)
+                    self.editor.canvas.figures.append(SvgShape("polyline", polyline, points=points))
+
             self.editor.drawer.dwg = dwg
 
             self.editor.canvas.load(QByteArray(self.editor.drawer.dwg.tostring().encode('utf-8')))
