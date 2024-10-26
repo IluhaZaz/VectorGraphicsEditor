@@ -8,6 +8,7 @@ from copy import copy
 
 from components.svg_utils import Drawer, SvgShape
 
+tolerance = 3
 
 class Canvas(QSvgWidget):
 
@@ -76,6 +77,20 @@ class Canvas(QSvgWidget):
                                                     fill="none")
                 draw.dwg.add(polyline)
                 self.figures.append(SvgShape("polyline", polyline, points=copy(self.points)))
+            
+            case "polygon":
+                if self.points:
+                    draw.dwg.elements.remove(self.figures.pop(-1).obj)
+                self.points.append(end)
+
+                polygon = svgwrite.shapes.Polygon(points=self.points, 
+                                                    stroke=draw.stroke_color,
+                                                    stroke_width=draw.width,
+                                                    stroke_opacity=draw.stroke_opacity,
+                                                    fill = draw.fill,
+                                                    fill_opacity=draw.fill_opacity,)
+                draw.dwg.add(polygon)
+                self.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
         
     def move_figure(self, event: QMouseEvent):
         draw: Drawer = self.parent().drawer
@@ -117,7 +132,7 @@ class Canvas(QSvgWidget):
 
                     figure.params["selector"].attribs["x"] += dx
                     figure.params["selector"].attribs["y"] += dy
-                case "polyline":
+                case "polyline" | "polygon":
 
                     points = figure.params["points"]
 
@@ -139,7 +154,7 @@ class Canvas(QSvgWidget):
             end = event.pos().x(), event.pos().y()
 
             dist = ((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5
-            if dist < 3 and draw.figure != "polyline":
+            if dist < 3 and draw.figure not in ("polyline", "polygon"):
                 self.select_figure(event.pos())
             
             elif draw.selected:
@@ -152,10 +167,40 @@ class Canvas(QSvgWidget):
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
          self.parent().drawer.start = (event.pos().x(), event.pos().y())
-         
-    def find_clicked_figure(self, pos: QPoint):
 
-        tolerance = 3
+    def is_polyline_clicked(self, figure: SvgShape, pos: QPoint):
+        select_rect = None
+
+        points = figure.params["points"]
+
+        tl_select = list(points[0])
+        br_select = list(points[0])
+        is_clicked = False
+
+        for i in range(len(points) - 1):
+            start = points[i]
+            end = points[i + 1]
+
+            tl_select[0] = min(tl_select[0], end[0])
+            tl_select[1] = min(tl_select[1], end[1])
+
+            br_select[0] = max(br_select[0], end[0])
+            br_select[1] = max(br_select[1], end[1])
+
+            distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+            if distance_to_line <= tolerance:
+                print(f"Polyine selected: points={points}")
+                is_clicked = True
+        if is_clicked:
+            select_size = br_select[0] - tl_select[0], br_select[1] - tl_select[1]
+            select_rect = svgwrite.shapes.Rect(insert=tl_select,
+                                    size=select_size,
+                                    stroke="blue",
+                                    fill="none"
+                                    )
+        return figure, select_rect
+            
+    def find_clicked_figure(self, pos: QPoint):
         
         tl_select, select_size = None, None
         select_rect = None
@@ -225,26 +270,38 @@ class Canvas(QSvgWidget):
                         res_fig = figure
                         break
                 case "polyline":
+                    res_fig, select_rect = self.is_polyline_clicked(figure, pos)
+                    break
+
+                case "polygon":
                     points = figure.params["points"]
                     tl_select = list(points[0])
                     br_select = list(points[0])
-                    is_clicked = False
 
-                    for i in range(len(points) - 1):
-                        start = points[i]
-                        end = points[i + 1]
+                    num_points = len(points)
 
-                        tl_select[0] = min(tl_select[0], end[0])
-                        tl_select[1] = min(tl_select[1], end[1])
+                    if num_points < 3:
+                        res_fig, select_rect = self.is_polyline_clicked(figure, pos)
+                        break
+                        
+                    result = False
+                    j = num_points - 1
+                    for i in range(num_points):
 
-                        br_select[0] = max(br_select[0], end[0])
-                        br_select[1] = max(br_select[1], end[1])
+                        pi = points[i]
+                        pj = points[j]
 
-                        distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
-                        if distance_to_line <= tolerance:
-                            print(f"Polyine selected: points={points}")
-                            is_clicked = True
-                    if is_clicked:
+                        tl_select[0] = min(tl_select[0], pi[0])
+                        tl_select[1] = min(tl_select[1], pi[1])
+
+                        br_select[0] = max(br_select[0], pi[0])
+                        br_select[1] = max(br_select[1], pi[1])
+
+                        if ((pi[1] > pos.y()) != (pj[1] > pos.y())) and (pos.x() < (pj[0] - pi[0]) * (pos.y() - pi[1]) / (pj[1] - pi[1]) + pi[0]):
+                            result = not result
+                        j = i
+
+                    if result:
                         res_fig = figure
                         select_size = br_select[0] - tl_select[0], br_select[1] - tl_select[1]
                         select_rect = svgwrite.shapes.Rect(insert=tl_select,
@@ -252,9 +309,7 @@ class Canvas(QSvgWidget):
                                                 stroke="blue",
                                                 fill="none"
                                                 )
-                    break
-
-
+                        break
 
         return res_fig, select_rect
 
