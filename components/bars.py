@@ -46,7 +46,7 @@ class ToolBar(QToolBar):
             tree = ET.parse(filename)
             root = tree.getroot()
 
-            dwg = svgwrite.Drawing(profile='full', size=self.editor.drawer.size)
+            dwg = svgwrite.Drawing(profile='full', size=self.editor.drawer.size, filename=filename)
             for shape in root:
                 if shape.tag == '{http://www.w3.org/2000/svg}circle':
                     cx = int(shape.attrib['cx'])
@@ -121,6 +121,27 @@ class ToolBar(QToolBar):
                                                     fill="none")
                     dwg.add(polyline)
                     self.editor.canvas.figures.append(SvgShape("polyline", polyline, points=points))
+
+                elif shape.tag == "{http://www.w3.org/2000/svg}polygon":
+                    points = shape.attrib.get('points', [])
+
+                    points = points.split()
+                    points = [point.split(',') for point in points]
+                    points = [tuple(map(int, p)) for p in points]
+
+                    stroke = shape.attrib.get('stroke', '#FFFFFF')
+                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
+                    stroke_width = int(shape.attrib.get('stroke-width', 3))
+                    fill = shape.attrib.get('fill', "none")
+                    fill_opacity = shape.attrib.get('fill-opacity', 1)
+                    polygon = svgwrite.shapes.Polygon(points=points, 
+                                                    stroke=stroke,
+                                                    stroke_width=stroke_width,
+                                                    stroke_opacity=stroke_opacity,
+                                                    fill=fill,
+                                                    fill_opacity=fill_opacity)
+                    dwg.add(polygon)
+                    self.editor.canvas.figures.append(SvgShape("polygon", polygon, points=points))
 
             self.editor.drawer.dwg = dwg
 
