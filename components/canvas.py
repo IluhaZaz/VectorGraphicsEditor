@@ -5,10 +5,15 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, Qt, QPoint
 from copy import copy
+from json import load
 
 from components.svg_utils import Drawer, SvgShape
 
-tolerance = 3
+
+with open('constants.json', 'r') as f:
+    constants = load(f)
+
+TOLERANCE = constants["tolerance"]
 
 class Canvas(QSvgWidget):
 
@@ -188,7 +193,7 @@ class Canvas(QSvgWidget):
             br_select[1] = max(br_select[1], end[1])
 
             distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
-            if distance_to_line <= tolerance:
+            if distance_to_line <= TOLERANCE:
                 print(f"Polyine selected: points={points}")
                 is_clicked = True
         if is_clicked:
@@ -246,7 +251,7 @@ class Canvas(QSvgWidget):
                     end = figure.params['end']
 
                     distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
-                    if distance_to_line <= tolerance:
+                    if distance_to_line <= TOLERANCE:
                         print(f"Line selected: start={start}, end={end}")
 
                         if start[0] > end[0]:

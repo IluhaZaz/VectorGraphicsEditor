@@ -2,11 +2,15 @@ import xml.etree.ElementTree as ET
 import svgwrite
 import svgwrite.container
 
-from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog, QButtonGroup
+from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog
 from PyQt5.QtCore import QByteArray
+from json import load
 
 from components.svg_utils import SvgShape, Drawer, QToggleButton
 
+
+with open('constants.json', 'r') as f:
+    constants = load(f)
 
 class ToolBar(QToolBar):
 
@@ -48,15 +52,17 @@ class ToolBar(QToolBar):
 
             dwg = svgwrite.Drawing(profile='full', size=self.editor.drawer.size, filename=filename)
             for shape in root:
+
+                fill = shape.attrib.get('fill', constants["def_fill"])
+                fill_opacity = float(shape.attrib.get('fill-opacity', constants["def_fill_opacity"]))
+                stroke = shape.attrib.get('stroke', constants["def_stroke"])
+                stroke_opacity = float(shape.attrib.get('stroke-opacity', constants["def_stroke_opacity"]))
+                stroke_width = int(shape.attrib.get('stroke-width', constants["def_stroke_width"]))
+                
                 if shape.tag == '{http://www.w3.org/2000/svg}circle':
                     cx = int(shape.attrib['cx'])
                     cy = int(shape.attrib['cy'])
                     r = float(shape.attrib['r'])
-                    fill = shape.attrib.get('fill', 'none')
-                    fill_opacity = float(shape.attrib.get('fill-opacity', 1))
-                    stroke = shape.attrib.get('stroke', '#FFFFFF')
-                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
-                    stroke_width = int(shape.attrib.get('stroke-width', 3))
 
                     circle = dwg.circle(center=(cx, cy), r=r, 
                                        fill=fill, 
@@ -73,11 +79,6 @@ class ToolBar(QToolBar):
                     y = int(shape.attrib.get('y', 0))
                     width = int(shape.attrib.get('width', 0))
                     height = int(shape.attrib.get('height', 0))
-                    fill = shape.attrib.get('fill', 'none')
-                    fill_opacity = float(shape.attrib.get('fill-opacity', 1))
-                    stroke = shape.attrib.get('stroke', '#FFFFFF')
-                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
-                    stroke_width = int(shape.attrib.get('stroke-width', 3))
 
                     rect = dwg.rect(insert=(x, y), size=(width, height),
                                     fill=fill, 
@@ -93,9 +94,6 @@ class ToolBar(QToolBar):
                     y1 = int(shape.attrib.get('y1', 0))
                     x2 = int(shape.attrib.get('x2', 0))
                     y2 = int(shape.attrib.get('y2', 0))
-                    stroke = shape.attrib.get('stroke', '#FFFFFF')
-                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
-                    stroke_width = int(shape.attrib.get('stroke-width', 3))
 
                     line = dwg.line(start=(x1, y1), end=(x2, y2), 
                                     stroke=stroke, 
@@ -111,9 +109,6 @@ class ToolBar(QToolBar):
                     points = [point.split(',') for point in points]
                     points = [tuple(map(int, p)) for p in points]
 
-                    stroke = shape.attrib.get('stroke', '#FFFFFF')
-                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
-                    stroke_width = int(shape.attrib.get('stroke-width', 3))
                     polyline = svgwrite.shapes.Polyline(points=points, 
                                                     stroke=stroke,
                                                     stroke_width=stroke_width,
@@ -129,11 +124,6 @@ class ToolBar(QToolBar):
                     points = [point.split(',') for point in points]
                     points = [tuple(map(int, p)) for p in points]
 
-                    stroke = shape.attrib.get('stroke', '#FFFFFF')
-                    stroke_opacity = float(shape.attrib.get('stroke-opacity', 1))
-                    stroke_width = int(shape.attrib.get('stroke-width', 3))
-                    fill = shape.attrib.get('fill', "none")
-                    fill_opacity = shape.attrib.get('fill-opacity', 1)
                     polygon = svgwrite.shapes.Polygon(points=points, 
                                                     stroke=stroke,
                                                     stroke_width=stroke_width,
