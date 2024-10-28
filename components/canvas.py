@@ -27,39 +27,27 @@ class Canvas(QSvgWidget):
 
         match draw.figure:
             case "circle":
-                r = (((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5)//2
                 center = (start[0] + end[0])//2, (start[1] + end[1])//2
                 circle = svgwrite.shapes.Circle(center=center, 
-                                                r=r, 
+                                                r=0, 
                                                 stroke=draw.stroke_color, 
                                                 stroke_width=draw.width, 
                                                 fill = draw.fill,
                                                 fill_opacity=draw.fill_opacity,
                                                 stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(circle)
-                self.figures.append(SvgShape("circle", circle, center=center, r=r))
+                self.figures.append(SvgShape("circle", circle, center=center, r=0))
 
             case "rect":
-                size = (abs(start[0] - end[0]), abs(start[1] - end[1]))
-                if start[0] > end[0]:
-                    if start[1] > end[1]:
-                        top_left = end
-                    else:
-                        top_left = end[0], start[1]
-                else:
-                    if start[1] > end[1]:
-                        top_left = start[0], end[1]
-                    else:
-                        top_left = start
-                rect = svgwrite.shapes.Rect(insert=top_left,
-                                            size=size,
+                rect = svgwrite.shapes.Rect(insert=start,
+                                            size=(0, 0),
                                             stroke=draw.stroke_color, 
                                             stroke_width=draw.width, 
                                             fill = draw.fill,
                                             fill_opacity=draw.fill_opacity,
                                             stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(rect)
-                self.figures.append(SvgShape("rect", rect, insert=top_left, size=size))
+                self.figures.append(SvgShape("rect", rect, insert=start, size=(0, 0)))
 
             case "line":
                 line = svgwrite.shapes.Line(start=start,
@@ -68,7 +56,7 @@ class Canvas(QSvgWidget):
                                             stroke_width=draw.width,
                                             stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(line)
-                self.figures.append(SvgShape("line", line, start=start, end=end))
+                self.figures.append(SvgShape("line", line, start=start, end=(end[0] + 1, end[1] + 1)))
             
             case "polyline":
                 if self.points:
@@ -96,33 +84,92 @@ class Canvas(QSvgWidget):
                                                     fill_opacity=draw.fill_opacity,)
                 draw.dwg.add(polygon)
                 self.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
-        
-    def move_figure(self, event: QMouseEvent):
+
+    def mousePressEvent(self, event: QMouseEvent | None) -> None:
+        pos = event.pos().x(), event.pos().y()
+        self.parent().drawer.start = pos
+        self.parent().drawer.prev_pos = event.pos()
+
         draw: Drawer = self.parent().drawer
 
-        figure = self.find_clicked_figure(QPoint(*draw.start))[0]
-        if figure == draw.selected:
+        if draw.figure:
+            self.add_figure(pos, pos)
+        else:
+            self.select_figure(event.pos())
+
+        self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+
+    def mouseMoveEvent(self, event: QMouseEvent | None):
+        draw: Drawer = self.parent().drawer
+        if draw.figure:
+            figure: SvgShape = self.figures[-1]
             dx = event.pos().x() - draw.start[0]
             dy = event.pos().y() - draw.start[1]
             match(figure.shape):
                 case "circle":
-                    
-                    center = figure.params["center"]
-                    figure.params["center"] = (center[0] + dx, center[1] + dy)
-                    figure.obj.attribs["cx"] = center[0] + dx
-                    figure.obj.attribs["cy"] = center[1] + dy
+                    figure.params["r"] = (dx**2 + dy**2)**(0.5)
+                    figure.obj.attribs["r"] = (dx**2 + dy**2)**(0.5)
 
-                    figure.params["selector"].attribs["x"] += dx
-                    figure.params["selector"].attribs["y"] += dy
                 case "rect":
+                    if dx >= 0 and dy >= 0:
+                        figure.obj.attribs["width"] = dx
+                        figure.obj.attribs["height"] = dy
+                        figure.params["size"] = (dx, dy)
+                    elif dx >= 0 and dy <= 0:
+                        figure.obj.attribs["y"] = draw.start[1] + dy
+                        figure.obj.attribs["width"] = dx
+                        figure.obj.attribs["height"] = -dy
 
+                        figure.params["insert"] = draw.start[0], figure.obj.attribs["y"]
+                        figure.params["size"] = (dx, -dy)
+
+                    elif dx <= 0 and dy >= 0:
+                        figure.obj.attribs["x"] = draw.start[0] + dx
+                        figure.obj.attribs["width"] = -dx
+                        figure.obj.attribs["height"] = dy
+
+                        figure.params["insert"] = figure.obj.attribs["x"], draw.start[1]
+                        figure.params["size"] = (-dx, dy)
+
+                    else:
+                        figure.obj.attribs["x"] = draw.start[0] + dx
+                        figure.obj.attribs["y"] = draw.start[1] + dy
+                        figure.obj.attribs["width"] = -dx
+                        figure.obj.attribs["height"] = -dy
+
+                        figure.params["insert"] = figure.obj.attribs["x"], figure.obj.attribs["y"]
+                        figure.params["size"] = (-dx, -dy)
+
+                case "line":
+                    figure.obj.attribs["x2"] = event.pos().x()
+                    figure.obj.attribs["y2"] = event.pos().y()
+
+                    figure.params["end"] = figure.obj.attribs["x2"], figure.obj.attribs["y2"]
+
+            self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+
+        elif draw.selected:
+            figure = draw.selected
+
+            dx = event.pos().x() - draw.prev_pos.x()
+            dy = event.pos().y() - draw.prev_pos.y()
+            
+            match(figure.shape):
+
+                case "circle":
+                    center = figure.params["center"]
+
+                    figure.params["center"] = (center[0] + dx, center[1] + dy)
+                    figure.obj.attribs["cx"] +=dx
+                    figure.obj.attribs["cy"] +=dy
+
+                case "rect":
                     insert = figure.params["insert"]
-                    figure.params["insert"] = (insert[0] + dx, insert[1] + dy)
-                    figure.obj.attribs["x"] += dx
-                    figure.obj.attribs["y"] += dy
 
-                    figure.params["selector"].attribs["x"] += dx
-                    figure.params["selector"].attribs["y"] += dy
+                    figure.params["insert"] = (insert[0] + dx, insert[1] + dy)
+                    figure.obj.attribs["x"] = insert[0] + dx
+                    figure.obj.attribs["y"] = insert[1] + dy
+                
                 case "line":
 
                     start = figure.params["start"]
@@ -134,9 +181,7 @@ class Canvas(QSvgWidget):
                     figure.obj.attribs["y1"] += dy
                     figure.obj.attribs["x2"] += dx
                     figure.obj.attribs["y2"] += dy
-
-                    figure.params["selector"].attribs["x"] += dx
-                    figure.params["selector"].attribs["y"] += dy
+                
                 case "polyline" | "polygon":
 
                     points = figure.params["points"]
@@ -147,31 +192,12 @@ class Canvas(QSvgWidget):
                     figure.obj.points = points
                     points = [str(p) for p in points]
                     figure.obj.attribs["points"] = " ".join(points)
-                    figure.params["selector"].attribs["x"] += dx
-                    figure.params["selector"].attribs["y"] += dy
 
-
-    def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            draw: Drawer = self.parent().drawer
-
-            start = draw.start
-            end = event.pos().x(), event.pos().y()
-
-            dist = ((start[0] - end[0])**2 + (start[1] - end[1])**2)**0.5
-            if dist < 3 and draw.figure not in ("polyline", "polygon"):
-                self.select_figure(event.pos())
+            figure.params["selector"].attribs["x"] += dx
+            figure.params["selector"].attribs["y"] += dy
             
-            elif draw.selected:
-                self.move_figure(event)                            
-
-            else:
-                self.add_figure(start, end)
-                    
+            draw.prev_pos = event.pos()
             self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
-
-    def mousePressEvent(self, event: QMouseEvent | None) -> None:
-         self.parent().drawer.start = (event.pos().x(), event.pos().y())
 
     def is_polyline_clicked(self, figure: SvgShape, pos: QPoint):
         select_rect = None

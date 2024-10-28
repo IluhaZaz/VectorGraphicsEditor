@@ -1,6 +1,7 @@
 import svgwrite
 
 from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtCore import QPoint
 from json import load
 
 
@@ -27,6 +28,7 @@ class Drawer:
         self.fill_opacity = constants["def_fill_opacity"]
         self.start = None
         self.selected: SvgShape = None
+        self.prev_pos: QPoint = None
 
 
 class QToggleButton(QPushButton):
