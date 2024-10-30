@@ -3,7 +3,7 @@ import svgwrite.shapes
 
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
-from PyQt5.QtCore import QByteArray, Qt, QPoint
+from PyQt5.QtCore import QByteArray, QPoint
 from copy import copy
 from json import load
 
@@ -30,7 +30,7 @@ class Canvas(QSvgWidget):
                 center = (start[0] + end[0])//2, (start[1] + end[1])//2
                 circle = svgwrite.shapes.Circle(center=center, 
                                                 r=0, 
-                                                stroke=draw.stroke_color, 
+                                                stroke=draw.stroke, 
                                                 stroke_width=draw.width, 
                                                 fill = draw.fill,
                                                 fill_opacity=draw.fill_opacity,
@@ -41,7 +41,7 @@ class Canvas(QSvgWidget):
             case "rect":
                 rect = svgwrite.shapes.Rect(insert=start,
                                             size=(0, 0),
-                                            stroke=draw.stroke_color, 
+                                            stroke=draw.stroke, 
                                             stroke_width=draw.width, 
                                             fill = draw.fill,
                                             fill_opacity=draw.fill_opacity,
@@ -52,7 +52,7 @@ class Canvas(QSvgWidget):
             case "line":
                 line = svgwrite.shapes.Line(start=start,
                                             end=end,
-                                            stroke=draw.stroke_color,
+                                            stroke=draw.stroke,
                                             stroke_width=draw.width,
                                             stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(line)
@@ -64,7 +64,7 @@ class Canvas(QSvgWidget):
                 self.points.append(end)
 
                 polyline = svgwrite.shapes.Polyline(points=self.points, 
-                                                    stroke=draw.stroke_color,
+                                                    stroke=draw.stroke,
                                                     stroke_width=draw.width,
                                                     stroke_opacity=draw.stroke_opacity,
                                                     fill="none")
@@ -77,7 +77,7 @@ class Canvas(QSvgWidget):
                 self.points.append(end)
 
                 polygon = svgwrite.shapes.Polygon(points=self.points, 
-                                                    stroke=draw.stroke_color,
+                                                    stroke=draw.stroke,
                                                     stroke_width=draw.width,
                                                     stroke_opacity=draw.stroke_opacity,
                                                     fill = draw.fill,
@@ -229,7 +229,7 @@ class Canvas(QSvgWidget):
                                     stroke="blue",
                                     fill="none"
                                     )
-        return figure, select_rect
+        return select_rect
             
     def find_clicked_figure(self, pos: QPoint):
         
@@ -301,8 +301,10 @@ class Canvas(QSvgWidget):
                         res_fig = figure
                         break
                 case "polyline":
-                    res_fig, select_rect = self.is_polyline_clicked(figure, pos)
-                    break
+                    select_rect = self.is_polyline_clicked(figure, pos)
+                    if select_rect:
+                        res_fig = figure
+                        break
 
                 case "polygon":
                     points = figure.params["points"]
@@ -358,6 +360,9 @@ class Canvas(QSvgWidget):
             draw.selected = figure
             draw.dwg.add(select_rect)
             draw.selected.params["selector"] = select_rect
+
+            self.parent().tool_bar.stroke_color.setStyleSheet(f"background: {figure.obj.attribs['stroke']};")
+            self.parent().tool_bar.fill_color.setStyleSheet(f"background: {figure.obj.attribs['fill']};")
             
         self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
 

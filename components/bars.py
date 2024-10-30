@@ -4,6 +4,7 @@ import svgwrite.container
 
 from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog
 from PyQt5.QtCore import QByteArray
+from PyQt5.QtGui import QColor
 from json import load
 
 from components.svg_utils import SvgShape, Drawer, QToggleButton
@@ -171,18 +172,49 @@ class ToolBar(QToolBar):
         self.editor.close()
 
     def change_stroke_color(self):
-        color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        dialog = QColorDialog()
+        draw: Drawer = self.editor.drawer
+
+        if draw.selected:
+            initial_color = list(map(int, draw.selected.obj.attribs["stroke"].strip("rgb")[1:-1].split(", ")))
+            initial_opacity = int(float(draw.selected.obj.attribs["stroke-opacity"]) * 255)
+            initial_color.append(initial_opacity)
+            color = dialog.getColor(options=QColorDialog.ShowAlphaChannel, initial=QColor(*initial_color))
+
+        else:
+            color = dialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        
         opacity = color.alphaF()
         color = "rgb" + str(color.getRgb()[:-1])
 
+        if draw.selected:
+            draw.selected.obj.attribs["stroke"] = color
+            draw.selected.obj.attribs["stroke-opacity"] = opacity
+            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+
         self.stroke_color.setStyleSheet(f"background: {color};")
-        self.editor.drawer.stroke_color = color
+        self.editor.drawer.stroke = color
         self.editor.drawer.stroke_opacity = opacity
 
     def change_fill_color(self):
-        color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        dialog = QColorDialog()
+        draw: Drawer = self.editor.drawer
+
+        if draw.selected:
+            initial_color = list(map(int, draw.selected.obj.attribs["fill"].strip("rgb")[1:-1].split(", ")))
+            initial_opacity = int(float(draw.selected.obj.attribs["fill-opacity"]) * 255)
+            initial_color.append(initial_opacity)
+            color = dialog.getColor(options=QColorDialog.ShowAlphaChannel, initial=QColor(*initial_color))
+        else:
+            color = dialog.getColor(options=QColorDialog.ShowAlphaChannel)
+
         opacity = color.alphaF()
         color = "rgb" + str(color.getRgb()[:-1])
+
+        if draw.selected:
+            draw.selected.obj.attribs["fill"] = color
+            draw.selected.obj.attribs["fill-opacity"] = opacity
+            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
 
         self.fill_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.fill = color

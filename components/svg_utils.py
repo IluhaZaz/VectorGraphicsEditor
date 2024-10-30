@@ -21,7 +21,7 @@ class Drawer:
         self.size = parent.canvas.size().width(), parent.canvas.size().height()
         self.dwg = svgwrite.Drawing(profile="full", size=self.size)
         self.figure = None
-        self.stroke_color = constants["def_stroke"]
+        self.stroke = constants["def_stroke"]
         self.fill = constants["def_fill"]
         self.width = constants["def_stroke_width"]
         self.stroke_opacity = constants["def_stroke_opacity"]
