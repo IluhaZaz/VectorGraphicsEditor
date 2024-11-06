@@ -4,8 +4,11 @@ import svgwrite.shapes
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, QPoint
+from PyQt5.QtWidgets import QInputDialog
 from copy import copy
 from json import load
+
+import svgwrite.text
 
 from components.svg_utils import Drawer, SvgShape
 
@@ -84,6 +87,18 @@ class Canvas(QSvgWidget):
                                                     fill_opacity=draw.fill_opacity,)
                 draw.dwg.add(polygon)
                 self.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
+            
+            case "text":
+                txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write text to display it")
+                if ok:
+                    font_size = self.parent().tool_bar.font_size.value()
+                    text = svgwrite.text.Text(text=txt, 
+                                              insert=draw.start, 
+                                              fill=draw.stroke, 
+                                              fill_opacity=draw.stroke_opacity,
+                                              style=f"font-size:{font_size};")
+                    draw.dwg.add(text)
+                    self.figures.append(SvgShape("text", text, insert=draw.start, font_size=font_size))
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         pos = event.pos().x(), event.pos().y()
@@ -163,7 +178,7 @@ class Canvas(QSvgWidget):
                     figure.obj.attribs["cx"] +=dx
                     figure.obj.attribs["cy"] +=dy
 
-                case "rect":
+                case "rect" | "text":
                     insert = figure.params["insert"]
 
                     figure.params["insert"] = (insert[0] + dx, insert[1] + dy)
@@ -343,6 +358,23 @@ class Canvas(QSvgWidget):
                                                 fill="none"
                                                 )
                         break
+                
+                case "text":
+                    font_size = figure.params["font_size"]
+                    text_length = len(figure.obj.text) * font_size * 0.6
+                    text_height = font_size
+                    size=(text_length, text_height)
+                    insert = list(figure.params["insert"])
+                    insert[1] -= text_height
+
+                    if insert[0] <= pos.x() <= insert[0] + size[0] and insert[1] <= pos.y() <= insert[1] + size[1]:
+                        res_fig = figure
+                        select_rect = svgwrite.shapes.Rect(insert=insert,
+                                                    size=size,
+                                                    stroke="blue",
+                                                    fill="none"
+                                                    )
+                        break
 
         return res_fig, select_rect
 
@@ -361,8 +393,8 @@ class Canvas(QSvgWidget):
             draw.dwg.add(select_rect)
             draw.selected.params["selector"] = select_rect
 
-            self.parent().tool_bar.stroke_color.setStyleSheet(f"background: {figure.obj.attribs['stroke']};")
-            self.parent().tool_bar.fill_color.setStyleSheet(f"background: {figure.obj.attribs['fill']};")
+            self.parent().tool_bar.stroke_color.setStyleSheet(f"background: {figure.obj.attribs.get('stroke', constants['def_stroke'])};")
+            self.parent().tool_bar.fill_color.setStyleSheet(f"background: {figure.obj.attribs.get('fill', constants['def_fill'])};")
             
         self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
 
