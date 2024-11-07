@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import svgwrite
 import svgwrite.container
 
-from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog, QSpinBox, QLabel
+from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog, QSpinBox, QLabel, QInputDialog
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtGui import QColor
 from json import load
@@ -10,7 +10,7 @@ from json import load
 import svgwrite.shapes
 import svgwrite.text
 
-from components.svg_utils import SvgShape, Drawer, QToggleButton
+from components.svg_utils import SvgShape, Drawer, QToggleButton, Layer
 
 
 with open('constants.json', 'r') as f:
@@ -365,3 +365,28 @@ class FiguresBar(QToolBar):
 
     def delete_figure(self):
         self.editor.canvas.delete_figure(self.editor.drawer.selected)
+
+
+class LayerBar(QToolBar):
+
+    def __init__(self, title, parent):
+        super().__init__(title, parent)
+
+        self.editor: QMainWindow = parent
+
+        self.add_layer_bnt = QPushButton(parent=self, text="Add layer")
+        self.add_layer_bnt.clicked.connect(self.add_layer)
+        self.addWidget(self.add_layer_bnt)
+        
+        main_layer: Layer = Layer(self, "main")
+        main_layer.setStyleSheet("background: rgba(240,128,128, 1);")
+        self.editor.canvas.layers.append(main_layer)
+        self.addWidget(main_layer)
+    
+    def add_layer(self):
+        txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write new layer's name")
+        if ok:
+            layer = Layer(parent=self, name=txt)
+            self.editor.canvas.layers.append(layer)
+            self.addWidget(layer)
+            

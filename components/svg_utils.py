@@ -1,7 +1,7 @@
 import svgwrite
 
 from PyQt5.QtWidgets import QPushButton
-from PyQt5.QtCore import QPoint
+from PyQt5.QtCore import QPoint, QByteArray
 from json import load
 
 
@@ -29,6 +29,7 @@ class Drawer:
         self.start = None
         self.selected: SvgShape = None
         self.prev_pos: QPoint = None
+        self.layer: Layer = parent.canvas.layers[0]
 
 
 class QToggleButton(QPushButton):
@@ -38,3 +39,30 @@ class QToggleButton(QPushButton):
 
         self.setCheckable(True)
         self.setChecked(False)
+
+
+class Layer(QPushButton):
+    def __init__(self, parent, name: str):
+        super().__init__(parent=parent, text=name)
+        self.name = name
+        self.figures: list[SvgShape] = []
+        self.is_shown: bool = True
+
+        self.setStyleSheet("background: rgba(240,128,128, 0.8);")
+    
+    def mousePressEvent(self, e):
+        draw: Drawer = self.parent().editor.drawer
+
+        if draw.selected is not None:
+            draw.dwg.elements.remove(draw.selected.params["selector"])
+            draw.selected = None
+
+        self.parent().editor.drawer.layer = self
+        self.parent().editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+
+        self.setStyleSheet("background: rgba(240,128,128, 1);")
+        for layer in self.parent().editor.canvas.layers:
+            if layer != self:
+                layer.setStyleSheet("background: rgba(240,128,128, 0.8);")
+
+        return super().mousePressEvent(e)

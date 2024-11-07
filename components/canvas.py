@@ -10,7 +10,7 @@ from json import load
 
 import svgwrite.text
 
-from components.svg_utils import Drawer, SvgShape
+from components.svg_utils import Drawer, SvgShape, Layer
 
 
 with open('constants.json', 'r') as f:
@@ -22,11 +22,17 @@ class Canvas(QSvgWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.figures: list[SvgShape] = []
+        self.layers: list[Layer] = []
         self.points: list[int] = []
+    
+    def get_current_layer(self)->Layer:
+        for layer in self.layers:
+            if layer == self.parent().drawer.layer:
+                return layer
 
     def add_figure(self, start: tuple[int], end: tuple[int]):
         draw: Drawer = self.parent().drawer
+        layer: Layer = self.get_current_layer()
 
         match draw.figure:
             case "circle":
@@ -39,7 +45,7 @@ class Canvas(QSvgWidget):
                                                 fill_opacity=draw.fill_opacity,
                                                 stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(circle)
-                self.figures.append(SvgShape("circle", circle, center=center, r=0))
+                layer.figures.append(SvgShape("circle", circle, center=center, r=0))
 
             case "rect":
                 rect = svgwrite.shapes.Rect(insert=start,
@@ -50,7 +56,7 @@ class Canvas(QSvgWidget):
                                             fill_opacity=draw.fill_opacity,
                                             stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(rect)
-                self.figures.append(SvgShape("rect", rect, insert=start, size=(0, 0)))
+                layer.figures.append(SvgShape("rect", rect, insert=start, size=(0, 0)))
 
             case "line":
                 line = svgwrite.shapes.Line(start=start,
@@ -59,11 +65,11 @@ class Canvas(QSvgWidget):
                                             stroke_width=draw.width,
                                             stroke_opacity=draw.stroke_opacity)
                 draw.dwg.add(line)
-                self.figures.append(SvgShape("line", line, start=start, end=(end[0] + 1, end[1] + 1)))
+                layer.figures.append(SvgShape("line", line, start=start, end=(end[0] + 1, end[1] + 1)))
             
             case "polyline":
                 if self.points:
-                    draw.dwg.elements.remove(self.figures.pop(-1).obj)
+                    draw.dwg.elements.remove(layer.figures.pop(-1).obj)
                 self.points.append(end)
 
                 polyline = svgwrite.shapes.Polyline(points=self.points, 
@@ -72,11 +78,11 @@ class Canvas(QSvgWidget):
                                                     stroke_opacity=draw.stroke_opacity,
                                                     fill="none")
                 draw.dwg.add(polyline)
-                self.figures.append(SvgShape("polyline", polyline, points=copy(self.points)))
+                layer.figures.append(SvgShape("polyline", polyline, points=copy(self.points)))
             
             case "polygon":
                 if self.points:
-                    draw.dwg.elements.remove(self.figures.pop(-1).obj)
+                    draw.dwg.elements.remove(layer.figures.pop(-1).obj)
                 self.points.append(end)
 
                 polygon = svgwrite.shapes.Polygon(points=self.points, 
@@ -86,7 +92,7 @@ class Canvas(QSvgWidget):
                                                     fill = draw.fill,
                                                     fill_opacity=draw.fill_opacity,)
                 draw.dwg.add(polygon)
-                self.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
+                layer.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
             
             case "text":
                 txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write text to display it")
@@ -98,7 +104,7 @@ class Canvas(QSvgWidget):
                                               fill_opacity=draw.stroke_opacity,
                                               style=f"font-size:{font_size};")
                     draw.dwg.add(text)
-                    self.figures.append(SvgShape("text", text, insert=draw.start, font_size=font_size))
+                    layer.figures.append(SvgShape("text", text, insert=draw.start, font_size=font_size))
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         pos = event.pos().x(), event.pos().y()
@@ -116,8 +122,9 @@ class Canvas(QSvgWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         draw: Drawer = self.parent().drawer
+        layer: Layer = self.get_current_layer()
         if draw.figure:
-            figure: SvgShape = self.figures[-1]
+            figure: SvgShape = layer.figures[-1]
             dx = event.pos().x() - draw.start[0]
             dy = event.pos().y() - draw.start[1]
             match(figure.shape):
@@ -247,12 +254,13 @@ class Canvas(QSvgWidget):
         return select_rect
             
     def find_clicked_figure(self, pos: QPoint):
+        layer: Layer = self.get_current_layer()
         
         tl_select, select_size = None, None
         select_rect = None
         res_fig = None
 
-        for figure in self.figures[::-1]:
+        for figure in layer.figures[::-1]:
             match figure.shape:
                 case'circle':
                     center = figure.params["center"]
@@ -400,10 +408,12 @@ class Canvas(QSvgWidget):
 
     def delete_figure(self, figure: SvgShape):
         draw: Drawer = self.parent().drawer
+        layer: Layer = self.get_current_layer()
+
         if draw.selected is not None:
             draw.dwg.elements.remove(draw.selected.params["selector"])
             draw.dwg.elements.remove(figure.obj)
-            self.figures.remove(figure)
+            layer.figures.remove(figure)
             draw.selected = None
 
         self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
