@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtCore import QPoint, QByteArray
 from json import load
 
+import svgwrite.container
+
 
 with open('constants.json', 'r') as f:
     constants = load(f)
@@ -19,7 +21,6 @@ class Drawer:
 
     def __init__(self, parent) -> None:
         self.size = parent.canvas.size().width(), parent.canvas.size().height()
-        self.dwg = svgwrite.Drawing(profile="full", size=self.size)
         self.figure = None
         self.stroke = constants["def_stroke"]
         self.fill = constants["def_fill"]
@@ -47,21 +48,23 @@ class Layer(QPushButton):
         self.name = name
         self.figures: list[SvgShape] = []
         self.is_shown: bool = True
+        self.g = svgwrite.container.Group(id=name)
 
         self.setStyleSheet("background: rgba(240,128,128, 0.8);")
     
     def mousePressEvent(self, e):
+        canvas = self.parent().editor.canvas
         draw: Drawer = self.parent().editor.drawer
 
         if draw.selected is not None:
-            draw.dwg.elements.remove(draw.selected.params["selector"])
+            canvas.dwg.elements.remove(draw.selected.params["selector"])
             draw.selected = None
 
         self.parent().editor.drawer.layer = self
-        self.parent().editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+        canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
 
         self.setStyleSheet("background: rgba(240,128,128, 1);")
-        for layer in self.parent().editor.canvas.layers:
+        for layer in canvas.layers:
             if layer != self:
                 layer.setStyleSheet("background: rgba(240,128,128, 0.8);")
 

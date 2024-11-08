@@ -29,7 +29,7 @@ class Ui_MainWindow:
         main_window.setCentralWidget(main_window.central_widget)
 
         main_window.canvas = Canvas(main_window)
-        main_window.canvas.setGeometry(70, 100, main_window.size().width() - 200, main_window.size().height() - 300)
+        main_window.canvas.setGeometry(70, 100, 1700, 800)
 
         main_window.tool_bar = ToolBar("Tool bar", parent=main_window)
         main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea, main_window.tool_bar)

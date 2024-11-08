@@ -22,6 +22,8 @@ class Canvas(QSvgWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
+        size = (1700, 800)
+        self.dwg = svgwrite.Drawing(profile="full", size=size)
         self.layers: list[Layer] = []
         self.points: list[int] = []
     
@@ -44,7 +46,7 @@ class Canvas(QSvgWidget):
                                                 fill = draw.fill,
                                                 fill_opacity=draw.fill_opacity,
                                                 stroke_opacity=draw.stroke_opacity)
-                draw.dwg.add(circle)
+                layer.g.add(circle)
                 layer.figures.append(SvgShape("circle", circle, center=center, r=0))
 
             case "rect":
@@ -55,7 +57,7 @@ class Canvas(QSvgWidget):
                                             fill = draw.fill,
                                             fill_opacity=draw.fill_opacity,
                                             stroke_opacity=draw.stroke_opacity)
-                draw.dwg.add(rect)
+                layer.g.add(rect)
                 layer.figures.append(SvgShape("rect", rect, insert=start, size=(0, 0)))
 
             case "line":
@@ -64,12 +66,12 @@ class Canvas(QSvgWidget):
                                             stroke=draw.stroke,
                                             stroke_width=draw.width,
                                             stroke_opacity=draw.stroke_opacity)
-                draw.dwg.add(line)
+                layer.g.add(line)
                 layer.figures.append(SvgShape("line", line, start=start, end=(end[0] + 1, end[1] + 1)))
             
             case "polyline":
                 if self.points:
-                    draw.dwg.elements.remove(layer.figures.pop(-1).obj)
+                    layer.g.elements.remove(layer.figures.pop(-1).obj)
                 self.points.append(end)
 
                 polyline = svgwrite.shapes.Polyline(points=self.points, 
@@ -77,12 +79,12 @@ class Canvas(QSvgWidget):
                                                     stroke_width=draw.width,
                                                     stroke_opacity=draw.stroke_opacity,
                                                     fill="none")
-                draw.dwg.add(polyline)
+                layer.g.add(polyline)
                 layer.figures.append(SvgShape("polyline", polyline, points=copy(self.points)))
             
             case "polygon":
                 if self.points:
-                    draw.dwg.elements.remove(layer.figures.pop(-1).obj)
+                    layer.g.elements.remove(layer.figures.pop(-1).obj)
                 self.points.append(end)
 
                 polygon = svgwrite.shapes.Polygon(points=self.points, 
@@ -91,7 +93,7 @@ class Canvas(QSvgWidget):
                                                     stroke_opacity=draw.stroke_opacity,
                                                     fill = draw.fill,
                                                     fill_opacity=draw.fill_opacity,)
-                draw.dwg.add(polygon)
+                layer.g.add(polygon)
                 layer.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
             
             case "text":
@@ -103,7 +105,7 @@ class Canvas(QSvgWidget):
                                               fill=draw.stroke, 
                                               fill_opacity=draw.stroke_opacity,
                                               style=f"font-size:{font_size};")
-                    draw.dwg.add(text)
+                    layer.g.add(text)
                     layer.figures.append(SvgShape("text", text, insert=draw.start, font_size=font_size))
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
@@ -118,7 +120,7 @@ class Canvas(QSvgWidget):
         else:
             self.select_figure(event.pos())
 
-        self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+        self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         draw: Drawer = self.parent().drawer
@@ -168,7 +170,7 @@ class Canvas(QSvgWidget):
 
                     figure.params["end"] = figure.obj.attribs["x2"], figure.obj.attribs["y2"]
 
-            self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+            self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
 
         elif draw.selected:
             figure = draw.selected
@@ -219,7 +221,7 @@ class Canvas(QSvgWidget):
             figure.params["selector"].attribs["y"] += dy
             
             draw.prev_pos = event.pos()
-            self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+            self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
 
     def is_polyline_clicked(self, figure: SvgShape, pos: QPoint):
         select_rect = None
@@ -390,7 +392,7 @@ class Canvas(QSvgWidget):
         draw: Drawer = self.parent().drawer
 
         if draw.selected:
-            draw.dwg.elements.remove(draw.selected.params["selector"])
+            self.dwg.elements.remove(draw.selected.params["selector"])
             draw.selected.params.pop("selector")
             draw.selected = None
 
@@ -398,22 +400,22 @@ class Canvas(QSvgWidget):
 
         if select_rect:
             draw.selected = figure
-            draw.dwg.add(select_rect)
+            self.dwg.add(select_rect)
             draw.selected.params["selector"] = select_rect
 
             self.parent().tool_bar.stroke_color.setStyleSheet(f"background: {figure.obj.attribs.get('stroke', constants['def_stroke'])};")
             self.parent().tool_bar.fill_color.setStyleSheet(f"background: {figure.obj.attribs.get('fill', constants['def_fill'])};")
             
-        self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+        self.parent().canvas.load(QByteArray(self.dwg.tostring().encode('utf-8')))
 
     def delete_figure(self, figure: SvgShape):
         draw: Drawer = self.parent().drawer
         layer: Layer = self.get_current_layer()
 
         if draw.selected is not None:
-            draw.dwg.elements.remove(draw.selected.params["selector"])
-            draw.dwg.elements.remove(figure.obj)
+            self.dwg.elements.remove(draw.selected.params["selector"])
+            layer.g.elements.remove(figure.obj)
             layer.figures.remove(figure)
             draw.selected = None
 
-        self.parent().canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+        self.parent().canvas.load(QByteArray(self.dwg.tostring().encode('utf-8')))

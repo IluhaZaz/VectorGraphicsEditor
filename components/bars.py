@@ -66,106 +66,131 @@ class ToolBar(QToolBar):
             root = tree.getroot()
 
             dwg = svgwrite.Drawing(profile='full', size=self.editor.drawer.size, filename=filename)
+
+            self.editor.canvas.dwg = dwg
+            self.editor.canvas.layers = []
+            self.editor.canvas.points = []
+
+            elements = []
+            layer_bar = self.parent().layer_bar
+            layer_bar.clear()
+            layer_bar.add_layer_bnt = QPushButton(parent=layer_bar, text="Add layer")
+            layer_bar.add_layer_bnt.clicked.connect(layer_bar.add_layer)
+            layer_bar.addWidget(layer_bar.add_layer_bnt)
+
+            num = 0
             for shape in root:
+                if shape.tag == '{http://www.w3.org/2000/svg}g':
+                    name = shape.attrib["id"]
+                    self.parent().layer_bar._add_layer(name)
 
-                fill = shape.attrib.get('fill', constants["def_fill"])
-                fill_opacity = float(shape.attrib.get('fill-opacity', constants["def_fill_opacity"]))
-                stroke = shape.attrib.get('stroke', constants["def_stroke"])
-                stroke_opacity = float(shape.attrib.get('stroke-opacity', constants["def_stroke_opacity"]))
-                stroke_width = int(shape.attrib.get('stroke-width', constants["def_stroke_width"]))
-                match(shape.tag):
-                    case '{http://www.w3.org/2000/svg}circle':
-                        cx = int(shape.attrib['cx'])
-                        cy = int(shape.attrib['cy'])
-                        r = float(shape.attrib['r'])
+                    namespace = {'svg': 'http://www.w3.org/2000/svg'}
+                    group = shape.findall(".//svg:*", namespaces=namespace)
+                    if group:
+                        elements.append((num, group))
+                    num += 1
+            for indx, layer in elements:
+                 for shape in layer:
 
-                        circle = dwg.circle(center=(cx, cy), r=r, 
-                                        fill=fill, 
-                                        stroke=stroke, 
-                                        fill_opacity=fill_opacity, 
-                                        stroke_opacity=stroke_opacity, 
-                                        stroke_width=stroke_width)
+                    fill = shape.attrib.get('fill', constants["def_fill"])
+                    fill_opacity = float(shape.attrib.get('fill-opacity', constants["def_fill_opacity"]))
+                    stroke = shape.attrib.get('stroke', constants["def_stroke"])
+                    stroke_opacity = float(shape.attrib.get('stroke-opacity', constants["def_stroke_opacity"]))
+                    stroke_width = int(shape.attrib.get('stroke-width', constants["def_stroke_width"]))
+                    match(shape.tag):
+                        case '{http://www.w3.org/2000/svg}circle':
+                            cx = int(shape.attrib['cx'])
+                            cy = int(shape.attrib['cy'])
+                            r = float(shape.attrib['r'])
 
-                        dwg.add(circle)
-                        self.editor.canvas.figures.append(SvgShape("circle", circle, center=(cx, cy), r=r))
+                            circle = dwg.circle(center=(cx, cy), r=r, 
+                                            fill=fill, 
+                                            stroke=stroke, 
+                                            fill_opacity=fill_opacity, 
+                                            stroke_opacity=stroke_opacity, 
+                                            stroke_width=stroke_width)
 
-                    case '{http://www.w3.org/2000/svg}rect':
-                        x = int(shape.attrib.get('x', 0))
-                        y = int(shape.attrib.get('y', 0))
-                        width = int(shape.attrib.get('width', 0))
-                        height = int(shape.attrib.get('height', 0))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("circle", circle, center=(cx, cy), r=r))
+                            self.editor.canvas.layers[indx].g.add(circle)
 
-                        rect = dwg.rect(insert=(x, y), size=(width, height),
-                                        fill=fill, 
-                                        stroke=stroke, 
-                                        fill_opacity=fill_opacity, 
-                                        stroke_opacity=stroke_opacity, 
-                                        stroke_width=stroke_width)
-                        dwg.add(rect)
-                        self.editor.canvas.figures.append(SvgShape("rect", rect, insert=(x, y), size=(width, height)))
+                        case '{http://www.w3.org/2000/svg}rect':
+                            x = int(shape.attrib.get('x', 0))
+                            y = int(shape.attrib.get('y', 0))
+                            width = int(shape.attrib.get('width', 0))
+                            height = int(shape.attrib.get('height', 0))
 
-                    case '{http://www.w3.org/2000/svg}line':
-                        x1 = int(shape.attrib.get('x1', 0))
-                        y1 = int(shape.attrib.get('y1', 0))
-                        x2 = int(shape.attrib.get('x2', 0))
-                        y2 = int(shape.attrib.get('y2', 0))
+                            rect = dwg.rect(insert=(x, y), size=(width, height),
+                                            fill=fill, 
+                                            stroke=stroke, 
+                                            fill_opacity=fill_opacity, 
+                                            stroke_opacity=stroke_opacity, 
+                                            stroke_width=stroke_width)
+                            
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("rect", rect, insert=(x, y), size=(width, height)))
+                            self.editor.canvas.layers[indx].g.add(rect)
 
-                        line = dwg.line(start=(x1, y1), end=(x2, y2), 
-                                        stroke=stroke, 
-                                        stroke_opacity=stroke_opacity, 
-                                        stroke_width=stroke_width
-                                        )
-                        dwg.add(line)
-                        self.editor.canvas.figures.append(SvgShape("line", line, start=(x1, y1), end=(x2, y2)))
-                    case "{http://www.w3.org/2000/svg}polyline":
-                        points = shape.attrib.get('points', [])
+                        case '{http://www.w3.org/2000/svg}line':
+                            x1 = int(shape.attrib.get('x1', 0))
+                            y1 = int(shape.attrib.get('y1', 0))
+                            x2 = int(shape.attrib.get('x2', 0))
+                            y2 = int(shape.attrib.get('y2', 0))
 
-                        points = points.split()
-                        points = [point.split(',') for point in points]
-                        points = [tuple(map(int, p)) for p in points]
+                            line = dwg.line(start=(x1, y1), end=(x2, y2), 
+                                            stroke=stroke, 
+                                            stroke_opacity=stroke_opacity, 
+                                            stroke_width=stroke_width
+                                            )
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("line", line, start=(x1, y1), end=(x2, y2)))
+                            self.editor.canvas.layers[indx].g.add(line)
 
-                        polyline = svgwrite.shapes.Polyline(points=points, 
-                                                        stroke=stroke,
-                                                        stroke_width=stroke_width,
-                                                        stroke_opacity=stroke_opacity,
-                                                        fill="none")
-                        dwg.add(polyline)
-                        self.editor.canvas.figures.append(SvgShape("polyline", polyline, points=points))
+                        case "{http://www.w3.org/2000/svg}polyline":
+                            points = shape.attrib.get('points', [])
 
-                    case "{http://www.w3.org/2000/svg}polygon":
-                        points = shape.attrib.get('points', [])
+                            points = points.split()
+                            points = [point.split(',') for point in points]
+                            points = [tuple(map(int, p)) for p in points]
 
-                        points = points.split()
-                        points = [point.split(',') for point in points]
-                        points = [tuple(map(int, p)) for p in points]
+                            polyline = svgwrite.shapes.Polyline(points=points, 
+                                                            stroke=stroke,
+                                                            stroke_width=stroke_width,
+                                                            stroke_opacity=stroke_opacity,
+                                                            fill="none")
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("polyline", polyline, points=points))
+                            self.editor.canvas.layers[indx].g.add(polyline)
 
-                        polygon = svgwrite.shapes.Polygon(points=points, 
-                                                        stroke=stroke,
-                                                        stroke_width=stroke_width,
-                                                        stroke_opacity=stroke_opacity,
-                                                        fill=fill,
-                                                        fill_opacity=fill_opacity)
-                        dwg.add(polygon)
-                        self.editor.canvas.figures.append(SvgShape("polygon", polygon, points=points))
-                    
-                    case "{http://www.w3.org/2000/svg}text":
-                        x = shape.attrib.get('x', 0)
-                        y = shape.attrib.get('y', 0)
+                        case "{http://www.w3.org/2000/svg}polygon":
+                            points = shape.attrib.get('points', [])
 
-                        style = shape.attrib['style']
-                        font_size = int(style.lstrip("font-size:")[:-1])
+                            points = points.split()
+                            points = [point.split(',') for point in points]
+                            points = [tuple(map(int, p)) for p in points]
 
-                        text = svgwrite.text.Text(text=shape.text, 
-                                                    insert=(x, y), 
-                                                    fill=fill, 
-                                                    opacity=fill_opacity, 
-                                                    style=style)
-                        dwg.add(text)
-                        self.editor.canvas.figures.append(SvgShape("text", text, font_size=font_size, insert=(x, y)))
+                            polygon = svgwrite.shapes.Polygon(points=points, 
+                                                            stroke=stroke,
+                                                            stroke_width=stroke_width,
+                                                            stroke_opacity=stroke_opacity,
+                                                            fill=fill,
+                                                            fill_opacity=fill_opacity)
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("polygon", polygon, points=points))
+                            self.editor.canvas.layers[indx].g.add(polygon)
+                        
+                        case "{http://www.w3.org/2000/svg}text":
+                            x = int(shape.attrib.get('x', 0))
+                            y = int(shape.attrib.get('y', 0))
 
-            self.editor.drawer.dwg = dwg
+                            style = shape.attrib['style']
+                            font_size = int(style.lstrip("font-size:")[:-1])
 
-            self.editor.canvas.load(QByteArray(self.editor.drawer.dwg.tostring().encode('utf-8')))
+                            text = svgwrite.text.Text(text=shape.text, 
+                                                        insert=(x, y), 
+                                                        fill=fill, 
+                                                        opacity=fill_opacity, 
+                                                        style=style)
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("text", text, font_size=font_size, insert=(x, y)))
+                            self.editor.canvas.layers[indx].g.add(text)
+            self.editor.drawer.layer = self.editor.canvas.layers[0]
+            self.editor.drawer.layer.setStyleSheet("background: rgba(240,128,128, 1);")
+            self.editor.canvas.load(QByteArray(dwg.tostring().encode('utf-8')))
 
 
     def on_save_as(self):
@@ -173,35 +198,38 @@ class ToolBar(QToolBar):
         filename, _ = QFileDialog.getSaveFileName(self, "Сохранить файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
         
         if filename:
+            canvas = self.editor.canvas
             draw: Drawer = self.editor.drawer
             if draw.selected:
-                draw.dwg.elements.remove(draw.selected.params["selector"])
+                canvas.dwg.elements.remove(draw.selected.params["selector"])
                 draw.selected.params.pop("selector")
                 draw.selected = None
 
-            draw.dwg.filename = filename
-            draw.dwg.save()
+            canvas.dwg.filename = filename
+            canvas.dwg.save()
 
     def on_save(self):
+        canvas = self.editor.canvas
         draw: Drawer = self.editor.drawer
-        if draw.dwg.filename == "noname.svg":
+        if canvas.dwg.filename == "noname.svg":
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getSaveFileName(self, "Сохранить файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
-            draw.dwg.filename = filename
+            canvas.dwg.filename = filename
 
         if draw.selected:
-            draw.dwg.elements.remove(draw.selected.params["selector"])
+            canvas.dwg.elements.remove(draw.selected.params["selector"])
             draw.selected.params.pop("selector")
             draw.selected = None
-            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+            self.editor.canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
         
-        draw.dwg.save()
+        canvas.dwg.save()
 
     def on_close(self):
         self.editor.close()
 
     def change_stroke_color(self):
         dialog = QColorDialog()
+        canvas = self.editor.canvas
         draw: Drawer = self.editor.drawer
 
         if draw.selected:
@@ -219,7 +247,7 @@ class ToolBar(QToolBar):
         if draw.selected:
             draw.selected.obj.attribs["stroke"] = color
             draw.selected.obj.attribs["stroke-opacity"] = opacity
-            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+            self.editor.canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
 
         self.stroke_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.stroke = color
@@ -227,6 +255,7 @@ class ToolBar(QToolBar):
 
     def change_fill_color(self):
         dialog = QColorDialog()
+        canvas = self.editor.canvas
         draw: Drawer = self.editor.drawer
 
         if draw.selected:
@@ -243,7 +272,7 @@ class ToolBar(QToolBar):
         if draw.selected:
             draw.selected.obj.attribs["fill"] = color
             draw.selected.obj.attribs["fill-opacity"] = opacity
-            self.editor.canvas.load(QByteArray(draw.dwg.tostring().encode('utf-8')))
+            self.editor.canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
 
         self.fill_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.fill = color
@@ -378,15 +407,24 @@ class LayerBar(QToolBar):
         self.add_layer_bnt.clicked.connect(self.add_layer)
         self.addWidget(self.add_layer_bnt)
         
+        canvas = self.parent().canvas
+
         main_layer: Layer = Layer(self, "main")
         main_layer.setStyleSheet("background: rgba(240,128,128, 1);")
-        self.editor.canvas.layers.append(main_layer)
+        canvas.layers.append(main_layer)
+        canvas.dwg.add(main_layer.g)
         self.addWidget(main_layer)
+    
+    def _add_layer(self, name):
+        canvas = self.parent().canvas
+
+        layer = Layer(parent=self, name=name)
+        canvas.layers.append(layer)
+        canvas.dwg.add(layer.g)
+        self.addWidget(layer)
     
     def add_layer(self):
         txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write new layer's name")
         if ok:
-            layer = Layer(parent=self, name=txt)
-            self.editor.canvas.layers.append(layer)
-            self.addWidget(layer)
+            self._add_layer(txt)
             
