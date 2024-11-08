@@ -5,6 +5,7 @@ import svgwrite.container
 from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog, QSpinBox, QLabel, QInputDialog
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtGui import QColor
+from PyQt5.QtSvg import QSvgWidget
 from json import load
 
 import svgwrite.shapes
@@ -74,6 +75,12 @@ class ToolBar(QToolBar):
             elements = []
             layer_bar = self.parent().layer_bar
             layer_bar.clear()
+
+            layer_bar.preview = QSvgWidget(layer_bar)
+            layer_bar.preview.setFixedSize(170, 80)
+            layer_bar.addWidget(layer_bar.preview)
+            layer_bar.preview.setStyleSheet("background: white; border:5px solid rgba(240,128,128, 0.8);")
+
             layer_bar.add_layer_bnt = QPushButton(parent=layer_bar, text="Add layer")
             layer_bar.add_layer_bnt.clicked.connect(layer_bar.add_layer)
             layer_bar.addWidget(layer_bar.add_layer_bnt)
@@ -191,6 +198,8 @@ class ToolBar(QToolBar):
             self.editor.drawer.layer = self.editor.canvas.layers[0]
             self.editor.drawer.layer.setStyleSheet("background: rgba(240,128,128, 1);")
             self.editor.canvas.load(QByteArray(dwg.tostring().encode('utf-8')))
+            svg =  self.editor.canvas._make_svg_from_element(self.editor.drawer.layer.g).encode('utf-8')
+            self.editor.layer_bar.preview.load(QByteArray(svg))
 
 
     def on_save_as(self):
@@ -402,6 +411,11 @@ class LayerBar(QToolBar):
         super().__init__(title, parent)
 
         self.editor: QMainWindow = parent
+
+        self.preview = QSvgWidget(self)
+        self.preview.setFixedSize(170, 80)
+        self.addWidget(self.preview)
+        self.preview.setStyleSheet("background: white; border:5px solid rgba(240,128,128, 0.8);")
 
         self.add_layer_bnt = QPushButton(parent=self, text="Add layer")
         self.add_layer_bnt.clicked.connect(self.add_layer)

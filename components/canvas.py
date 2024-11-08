@@ -107,6 +107,10 @@ class Canvas(QSvgWidget):
                                               style=f"font-size:{font_size};")
                     layer.g.add(text)
                     layer.figures.append(SvgShape("text", text, insert=draw.start, font_size=font_size))
+    
+    def _make_svg_from_element(self, element):
+        start: str = '<?xml version="1.0" encoding="utf-8" ?><svg baseProfile="full" height="800" version="1.1" width="1700" xmlns="http://www.w3.org/2000/svg" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xlink="http://www.w3.org/1999/xlink"><defs />'
+        return start + element.tostring() + "</svg>"
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         pos = event.pos().x(), event.pos().y()
@@ -121,6 +125,8 @@ class Canvas(QSvgWidget):
             self.select_figure(event.pos())
 
         self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
+        self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         draw: Drawer = self.parent().drawer
@@ -171,6 +177,8 @@ class Canvas(QSvgWidget):
                     figure.params["end"] = figure.obj.attribs["x2"], figure.obj.attribs["y2"]
 
             self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+            svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
+            self.parent().layer_bar.preview.load(QByteArray(svg))
 
         elif draw.selected:
             figure = draw.selected
@@ -222,6 +230,8 @@ class Canvas(QSvgWidget):
             
             draw.prev_pos = event.pos()
             self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+            svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
+            self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def is_polyline_clicked(self, figure: SvgShape, pos: QPoint):
         select_rect = None
@@ -407,6 +417,8 @@ class Canvas(QSvgWidget):
             self.parent().tool_bar.fill_color.setStyleSheet(f"background: {figure.obj.attribs.get('fill', constants['def_fill'])};")
             
         self.parent().canvas.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
+        self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def delete_figure(self, figure: SvgShape):
         draw: Drawer = self.parent().drawer
@@ -419,3 +431,5 @@ class Canvas(QSvgWidget):
             draw.selected = None
 
         self.parent().canvas.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
+        self.parent().layer_bar.preview.load(QByteArray(svg))
