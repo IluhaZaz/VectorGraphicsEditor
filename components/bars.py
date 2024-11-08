@@ -420,6 +420,10 @@ class LayerBar(QToolBar):
         self.add_layer_bnt = QPushButton(parent=self, text="Add layer")
         self.add_layer_bnt.clicked.connect(self.add_layer)
         self.addWidget(self.add_layer_bnt)
+
+        self.del_layer_bnt = QPushButton(parent=self, text="Delete layer")
+        self.del_layer_bnt.clicked.connect(self.del_layer)
+        self.addWidget(self.del_layer_bnt)
         
         canvas = self.parent().canvas
 
@@ -442,3 +446,11 @@ class LayerBar(QToolBar):
         if ok:
             self._add_layer(txt)
             
+    def del_layer(self):
+        layer: Layer = self.editor.drawer.layer
+        if id(layer) != id(self.editor.canvas.layers[0]):
+            self.editor.drawer.layer = self.editor.canvas.layers[0]
+            self.editor.canvas.dwg.elements.remove(layer.g)
+            self.editor.canvas.layers.remove(layer)
+            layer.deleteLater() 
+
