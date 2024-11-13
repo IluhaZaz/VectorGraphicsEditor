@@ -118,10 +118,12 @@ class Canvas(QSvgWidget):
         draw: Drawer = self.parent().drawer
 
         draw.selector_side = self.is_selector_clicked(pos)
+        if draw.selected:
+            draw.selector_point_indx = self.is_polyline_point_clicked(draw.selected, pos)
 
         if draw.figure:
             self.add_figure(pos, pos)
-        elif draw.selector_side:
+        elif draw.selector_side or draw.selector_point_indx is not None:
             pass
         else:
             self.select_figure(event.pos())
@@ -182,7 +184,7 @@ class Canvas(QSvgWidget):
             svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
             self.parent().layer_bar.preview.load(QByteArray(svg))
         
-        elif draw.selector_side:
+        elif draw.selector_side or draw.selector_point_indx is not None:
             start = draw.prev_pos.x(), draw.prev_pos.y()
             end = event.pos().x(), event.pos().y()
             self.edit_figure(start, end, draw.selector_side)
@@ -240,7 +242,7 @@ class Canvas(QSvgWidget):
         svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
         self.parent().layer_bar.preview.load(QByteArray(svg))
 
-    def is_polyline_clicked(self, figure: SvgShape, pos: QPoint):
+    def is_polyline_clicked(self, figure: SvgShape, pos: tuple[int]):
         select_rect = None
 
         points = figure.params["points"]
@@ -259,7 +261,7 @@ class Canvas(QSvgWidget):
             br_select[0] = max(br_select[0], end[0])
             br_select[1] = max(br_select[1], end[1])
             try:
-                distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+                distance_to_line = abs((end[1] - start[1]) * pos[0] - (end[0] - start[0]) * pos[1] + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
             except ZeroDivisionError:
                 continue
             if distance_to_line <= TOLERANCE:
@@ -300,6 +302,23 @@ class Canvas(QSvgWidget):
                                     stroke="blue",
                                     fill="none"
                                     )
+        return select_rect
+
+    def is_text_clicked(self, figure: SvgShape, pos: tuple[int]):
+        select_rect = None
+        font_size = figure.params["font_size"]
+        text_length = len(figure.obj.text) * font_size * 0.6
+        text_height = font_size
+        size=(text_length, text_height)
+        insert = list(figure.params["insert"])
+        insert[1] -= text_height
+
+        if insert[0] <= pos[0] <= insert[0] + size[0] and insert[1] <= pos[1] <= insert[1] + size[1]:
+            select_rect = svgwrite.shapes.Rect(insert=insert,
+                                        size=size,
+                                        stroke="blue",
+                                        fill="none"
+                                        )
         return select_rect
             
     def find_clicked_figure(self, pos: QPoint):
@@ -350,7 +369,7 @@ class Canvas(QSvgWidget):
                         res_fig = figure
                         break
                 case "polyline":
-                    select_rect = self.is_polyline_clicked(figure, pos)
+                    select_rect = self.is_polyline_clicked(figure, (pos.x(), pos.y()))
                     if select_rect:
                         res_fig = figure
                         break
@@ -363,7 +382,7 @@ class Canvas(QSvgWidget):
                     num_points = len(points)
 
                     if num_points < 3:
-                        res_fig, select_rect = self.is_polyline_clicked(figure, pos)
+                        res_fig, select_rect = self.is_polyline_clicked(figure, (pos.x(), pos.y()))
                         break
                         
                     result = False
@@ -394,20 +413,9 @@ class Canvas(QSvgWidget):
                         break
                 
                 case "text":
-                    font_size = figure.params["font_size"]
-                    text_length = len(figure.obj.text) * font_size * 0.6
-                    text_height = font_size
-                    size=(text_length, text_height)
-                    insert = list(figure.params["insert"])
-                    insert[1] -= text_height
-
-                    if insert[0] <= pos.x() <= insert[0] + size[0] and insert[1] <= pos.y() <= insert[1] + size[1]:
+                    select_rect = self.is_text_clicked(figure, (pos.x(), pos.y()))
+                    if select_rect:
                         res_fig = figure
-                        select_rect = svgwrite.shapes.Rect(insert=insert,
-                                                    size=size,
-                                                    stroke="blue",
-                                                    fill="none"
-                                                    )
                         break
 
         return res_fig, select_rect
@@ -457,6 +465,13 @@ class Canvas(QSvgWidget):
             distance_to_line = abs((end[1] - start[1]) * pos[0] - (end[0] - start[0]) * pos[1] + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
             if distance_to_line <= TOLERANCE:
                 return key
+        return None
+    
+    def is_polyline_point_clicked(self, figure: SvgShape, pos: tuple[int]):
+        for indx, point in enumerate(figure.params["points"]):
+            left = (point[0] - pos[0])**2 + (point[1] - pos[1])**2
+            if left <= TOLERANCE**2:
+                return indx
         return None
 
     
@@ -576,14 +591,21 @@ class Canvas(QSvgWidget):
                 figure.params["selector"] = select_rect
                 self.dwg.add(select_rect)
             
-            case "polyline":
-                pass
-            
-            case "polygon":
-                pass
-            
-            case "text":
-                pass
+            case "polyline" | "polygon":
+                indx = draw.selector_point_indx
+                points = list(figure.params["points"])
+                points[indx] = end
+                figure.params["points"] = points
+                figure.obj.points = points
+
+                points = [str(p[0]) + "," + str(p[1]) for p in points]
+                points = " ".join(points)
+                figure.obj.attribs["points"] = points
+
+                select_rect = self.is_polyline_clicked(figure, end)
+                self.dwg.elements.remove(figure.params["selector"])
+                figure.params["selector"] = select_rect
+                self.dwg.add(select_rect)
 
     def delete_figure(self, figure: SvgShape):
         draw: Drawer = self.parent().drawer

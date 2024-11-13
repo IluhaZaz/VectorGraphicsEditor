@@ -56,6 +56,7 @@ class ToolBar(QToolBar):
         self.font_size.setMaximum(1000)
         self.addWidget(self.font_size_lbl)
         self.font_size.setValue(constants["def_font_size"])
+        self.font_size.valueChanged.connect(self.change_font_size)
         self.font_size.setFixedSize(100, 30)
         self.addWidget(self.font_size)
 
@@ -286,6 +287,24 @@ class ToolBar(QToolBar):
         self.fill_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.fill = color
         self.editor.drawer.fill_opacity = opacity
+    
+    def change_font_size(self):
+        draw: Drawer = self.editor.drawer
+        canvas = self.editor.canvas
+        val = self.font_size.value()
+
+        figure: SvgShape = draw.selected
+
+        if draw.selected.shape == "text":
+            figure.params["font_size"] = val
+            figure.obj.attribs["font-size"] = val
+
+            canvas.dwg.elements.remove(figure.params["selector"])
+            select_rect = canvas.is_text_clicked(figure, figure.params["insert"])
+            canvas.dwg.add(select_rect)
+            figure.params["selector"] = select_rect
+
+            canvas.load(QByteArray(self.editor.canvas.dwg.tostring().encode('utf-8')))
 
 
 class FiguresBar(QToolBar):

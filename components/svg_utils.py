@@ -32,6 +32,7 @@ class Drawer:
         self.prev_pos: QPoint = None
         self.layer: Layer = parent.canvas.layers[0]
         self.selector_side: str = None
+        self.selector_point_indx: int = None
 
 
 class QToggleButton(QPushButton):
