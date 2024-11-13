@@ -1,5 +1,5 @@
 {
-    "tolerance": 3,
+    "tolerance": 5,
     "def_stroke": "rgb(0, 0, 0)",
     "def_fill": "rgb(255, 255, 255)",
     "def_stroke_width": 3,

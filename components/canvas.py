@@ -28,9 +28,7 @@ class Canvas(QSvgWidget):
         self.points: list[int] = []
     
     def get_current_layer(self)->Layer:
-        for layer in self.layers:
-            if layer == self.parent().drawer.layer:
-                return layer
+        return self.parent().drawer.layer
 
     def add_figure(self, start: tuple[int], end: tuple[int]):
         draw: Drawer = self.parent().drawer
@@ -119,8 +117,12 @@ class Canvas(QSvgWidget):
 
         draw: Drawer = self.parent().drawer
 
+        draw.selector_side = self.is_selector_clicked(pos)
+
         if draw.figure:
             self.add_figure(pos, pos)
+        elif draw.selector_side:
+            pass
         else:
             self.select_figure(event.pos())
 
@@ -179,6 +181,11 @@ class Canvas(QSvgWidget):
             self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
             svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
             self.parent().layer_bar.preview.load(QByteArray(svg))
+        
+        elif draw.selector_side:
+            start = draw.prev_pos.x(), draw.prev_pos.y()
+            end = event.pos().x(), event.pos().y()
+            self.edit_figure(start, end, draw.selector_side)
 
         elif draw.selected:
             figure = draw.selected
@@ -228,10 +235,10 @@ class Canvas(QSvgWidget):
             figure.params["selector"].attribs["x"] += dx
             figure.params["selector"].attribs["y"] += dy
             
-            draw.prev_pos = event.pos()
-            self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
-            svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
-            self.parent().layer_bar.preview.load(QByteArray(svg))
+        draw.prev_pos = event.pos()
+        self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
+        self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def is_polyline_clicked(self, figure: SvgShape, pos: QPoint):
         select_rect = None
@@ -251,13 +258,43 @@ class Canvas(QSvgWidget):
 
             br_select[0] = max(br_select[0], end[0])
             br_select[1] = max(br_select[1], end[1])
-
-            distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+            try:
+                distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+            except ZeroDivisionError:
+                continue
             if distance_to_line <= TOLERANCE:
                 print(f"Polyine selected: points={points}")
                 is_clicked = True
         if is_clicked:
             select_size = br_select[0] - tl_select[0], br_select[1] - tl_select[1]
+            select_rect = svgwrite.shapes.Rect(insert=tl_select,
+                                    size=select_size,
+                                    stroke="blue",
+                                    fill="none"
+                                    )
+        return select_rect
+    
+    def is_line_clicked(self, figure: SvgShape, pos: tuple[int]):
+        start = figure.params['start']
+        end = figure.params['end']
+        select_rect = None
+
+        distance_to_line = abs((end[1] - start[1]) * pos[0] - (end[0] - start[0]) * pos[1] + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+        if distance_to_line <= TOLERANCE:
+            print(f"Line selected: start={start}, end={end}")
+
+            if start[0] > end[0]:
+                if start[1] > end[1]:
+                    tl_select = end
+                else:
+                    tl_select = end[0], start[1]
+            else:
+                if start[1] > end[1]:
+                    tl_select = start[0], end[1]
+                else:
+                    tl_select = start
+            select_size = (abs(start[0] - end[0]), abs(start[1] - end[1]))
+
             select_rect = svgwrite.shapes.Rect(insert=tl_select,
                                     size=select_size,
                                     stroke="blue",
@@ -308,31 +345,8 @@ class Canvas(QSvgWidget):
                         break
 
                 case 'line':
-                    start = figure.params['start']
-                    end = figure.params['end']
-
-                    distance_to_line = abs((end[1] - start[1]) * pos.x() - (end[0] - start[0]) * pos.y() + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
-                    if distance_to_line <= TOLERANCE:
-                        print(f"Line selected: start={start}, end={end}")
-
-                        if start[0] > end[0]:
-                            if start[1] > end[1]:
-                                tl_select = end
-                            else:
-                                tl_select = end[0], start[1]
-                        else:
-                            if start[1] > end[1]:
-                                tl_select = start[0], end[1]
-                            else:
-                                tl_select = start
-                        select_size = (abs(start[0] - end[0]), abs(start[1] - end[1]))
-
-                        select_rect = svgwrite.shapes.Rect(insert=tl_select,
-                                                size=select_size,
-                                                stroke="blue",
-                                                fill="none"
-                                                )
-
+                    select_rect = self.is_line_clicked(figure, (pos.x(), pos.y()))
+                    if select_rect:
                         res_fig = figure
                         break
                 case "polyline":
@@ -419,6 +433,157 @@ class Canvas(QSvgWidget):
         self.parent().canvas.load(QByteArray(self.dwg.tostring().encode('utf-8')))
         svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
         self.parent().layer_bar.preview.load(QByteArray(svg))
+
+    def is_selector_clicked(self, pos: tuple[int]):
+        draw: Drawer = self.parent().drawer
+        if not draw.selected:
+            return None
+        
+        select_rect: svgwrite.shapes.Rect = draw.selected.params["selector"]
+        x = select_rect.attribs["x"]
+        y = select_rect.attribs["y"]
+        w = select_rect.attribs["width"]
+        h = select_rect.attribs["height"]
+
+        lines = {}
+
+        lines["top"] = ((x, y), (x + w, y))
+        lines["right"] = ((x + w, y), (x + w, y + h))
+        lines["bottom"] = ((x + w, y + h), (x, y + h))
+        lines["left"] = ((x, y + h), (x, y))
+
+        for key, val in lines.items():
+            start, end = val
+            distance_to_line = abs((end[1] - start[1]) * pos[0] - (end[0] - start[0]) * pos[1] + end[0] * start[1] - end[1] * start[0]) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
+            if distance_to_line <= TOLERANCE:
+                return key
+        return None
+
+    
+    def edit_figure(self, start: tuple[int], end: tuple[int], side: str):
+        draw: Drawer = self.parent().drawer
+        select_rect = draw.selected.params["selector"]
+
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+
+        figure = draw.selected
+
+        match figure.shape:
+            case "circle":
+                if side in ("top", "bottom"):                    
+                    if side == "bottom":
+                        if figure.params["r"] + dy <= 0:
+                            return
+                        select_rect.attribs["x"] -= dy
+                        select_rect.attribs["y"] -= dy
+
+                        select_rect.attribs["width"] += 2*dy
+                        select_rect.attribs["height"] += 2*dy
+
+                        figure.obj.attribs["r"] += dy
+                        figure.params["r"] += dy
+                    else:
+                        if figure.params["r"] - dy <= 0:
+                            return
+                        select_rect.attribs["x"] += dy
+                        select_rect.attribs["y"] += dy
+
+                        select_rect.attribs["width"] -= 2*dy
+                        select_rect.attribs["height"] -= 2*dy
+
+                        figure.obj.attribs["r"] -= dy
+                        figure.params["r"] -= dy
+
+                elif side in ("left", "right"):
+                    
+                    if side == "right":
+                        if figure.params["r"] + dx <= 0:
+                            return
+                        select_rect.attribs["x"] -= dx
+                        select_rect.attribs["y"] -= dx
+
+                        select_rect.attribs["width"] += 2*dx
+                        select_rect.attribs["height"] += 2*dx
+
+                        figure.obj.attribs["r"] += dx
+                        figure.params["r"] += dx
+                    else:
+                        if figure.params["r"] - dx <= 0:
+                            return
+                        select_rect.attribs["x"] += dx
+                        select_rect.attribs["y"] += dx
+
+                        select_rect.attribs["width"] -= 2*dx
+                        select_rect.attribs["height"] -= 2*dx
+
+                        figure.obj.attribs["r"] -= dx
+                        figure.params["r"] -= dx
+
+            case "rect":
+                if side in ("top", "bottom"):                    
+                    if side == "bottom":
+                        if figure.obj.attribs["height"] + dy <= 0:
+                            return
+                        figure.params["size"] = figure.params["size"][0], figure.params["size"][1] + dy
+                        figure.obj.attribs["height"] += dy
+                        select_rect.attribs["height"] += dy
+                    else:
+                        if figure.obj.attribs["height"] - dy <= 0:
+                            return
+                        figure.params["size"] = figure.params["size"][0], figure.params["size"][1] - dy
+                        figure.params["insert"] = figure.params["insert"][0], figure.params["insert"][1] + dy
+                        figure.obj.attribs["y"] += dy
+                        figure.obj.attribs["height"] -= dy
+                        select_rect.attribs["y"] += dy
+                        select_rect.attribs["height"] -= dy
+
+                elif side in ("left", "right"):
+                    
+                    if side == "right":
+                        if figure.obj.attribs["width"] + dx <= 0:
+                            return
+                        figure.params["size"] = figure.params["size"][0] + dx, figure.params["size"][1]
+                        figure.obj.attribs["width"] += dx
+                        select_rect.attribs["width"] += dx
+                    else:
+                        if figure.obj.attribs["width"] - dx <= 0:
+                            return
+                        figure.params["size"] = figure.params["size"][0] - dx, figure.params["size"][1]
+                        figure.params["insert"] = figure.params["insert"][0] + dx, figure.params["insert"][1]
+                        figure.obj.attribs["x"] += dx
+                        figure.obj.attribs["width"] -= dx
+                        select_rect.attribs["x"] += dx
+                        select_rect.attribs["width"] -= dx
+
+            case "line":
+                center = figure.params["end"]
+                left = (center[0] - start[0])**2 + (center[1] - start[1])**2
+                if left <= TOLERANCE**2:
+                    figure.obj.attribs["x2"] = end[0]
+                    figure.obj.attribs["y2"] = end[1]
+                    figure.params["end"] = end
+
+                center = figure.params["start"]
+                left = (center[0] - start[0])**2 + (center[1] - start[1])**2
+                if left <= TOLERANCE**2:
+                    figure.obj.attribs["x1"] = end[0]
+                    figure.obj.attribs["y1"] = end[1]
+                    figure.params["start"] = end
+                
+                select_rect = self.is_line_clicked(figure, end)
+                self.dwg.elements.remove(figure.params["selector"])
+                figure.params["selector"] = select_rect
+                self.dwg.add(select_rect)
+            
+            case "polyline":
+                pass
+            
+            case "polygon":
+                pass
+            
+            case "text":
+                pass
 
     def delete_figure(self, figure: SvgShape):
         draw: Drawer = self.parent().drawer

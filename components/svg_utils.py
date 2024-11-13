@@ -31,6 +31,7 @@ class Drawer:
         self.selected: SvgShape = None
         self.prev_pos: QPoint = None
         self.layer: Layer = parent.canvas.layers[0]
+        self.selector_side: str = None
 
 
 class QToggleButton(QPushButton):
