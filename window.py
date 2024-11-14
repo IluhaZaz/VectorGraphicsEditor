@@ -16,3 +16,4 @@ if __name__ == "__main__":
     ui_setuper.setup_ui(window) 
     window.show()
     sys.exit(app.exec_())
+    

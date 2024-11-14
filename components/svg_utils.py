@@ -4,8 +4,6 @@ from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtCore import QPoint, QByteArray
 from json import load
 
-import svgwrite.container
-
 
 with open('constants.json', 'r') as f:
     constants = load(f)
@@ -27,10 +25,13 @@ class Drawer:
         self.width = constants["def_stroke_width"]
         self.stroke_opacity = constants["def_stroke_opacity"]
         self.fill_opacity = constants["def_fill_opacity"]
+
         self.start = None
-        self.selected: SvgShape = None
         self.prev_pos: QPoint = None
+
+        self.selected: SvgShape = None
         self.layer: Layer = parent.canvas.layers[0]
+
         self.selector_side: str = None
         self.selector_point_indx: int = None
 
@@ -49,7 +50,6 @@ class Layer(QPushButton):
         super().__init__(parent=parent, text=name)
         self.name = name
         self.figures: list[SvgShape] = []
-        self.is_shown: bool = True
         self.g = svgwrite.container.Group(id=name)
 
         self.setStyleSheet("background: rgba(240,128,128, 0.8);")

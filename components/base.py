@@ -54,3 +54,4 @@ class Ui_MainWindow:
                                               """)
         main_window.layer_bar.setStyleSheet("""QToolBar{background: rgba(0, 0, 0, 0.8); border:2px solid rgba(240,128,128, 0.8);}
                                               """)
+        

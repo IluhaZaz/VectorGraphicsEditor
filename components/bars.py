@@ -1,15 +1,18 @@
 import xml.etree.ElementTree as ET
 import svgwrite
-import svgwrite.container
 
-from PyQt5.QtWidgets import QToolBar, QPushButton, QMainWindow, QFileDialog, QColorDialog, QSpinBox, QLabel, QInputDialog
+from PyQt5.QtWidgets import (QToolBar, 
+                             QPushButton, 
+                             QMainWindow, 
+                             QFileDialog, 
+                             QColorDialog, 
+                             QSpinBox, 
+                             QLabel, 
+                             QInputDialog)
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtGui import QColor
 from PyQt5.QtSvg import QSvgWidget
 from json import load
-
-import svgwrite.shapes
-import svgwrite.text
 
 from components.svg_utils import SvgShape, Drawer, QToggleButton, Layer
 
@@ -50,11 +53,11 @@ class ToolBar(QToolBar):
 
         self.font_size_lbl = QLabel(parent=self, text="Font size")
         self.font_size_lbl.setStyleSheet("QLabel{background-color: rgba(240,128,128, 0.8); padding: 0 10px;};")
+        self.addWidget(self.font_size_lbl)
 
         self.font_size = QSpinBox(parent=self)
         self.font_size.setMinimum(3)
         self.font_size.setMaximum(1000)
-        self.addWidget(self.font_size_lbl)
         self.font_size.setValue(constants["def_font_size"])
         self.font_size.valueChanged.connect(self.change_font_size)
         self.font_size.setFixedSize(100, 30)
@@ -97,6 +100,7 @@ class ToolBar(QToolBar):
                     if group:
                         elements.append((num, group))
                     num += 1
+                    
             for indx, layer in elements:
                  for shape in layer:
 
@@ -105,6 +109,7 @@ class ToolBar(QToolBar):
                     stroke = shape.attrib.get('stroke', constants["def_stroke"])
                     stroke_opacity = float(shape.attrib.get('stroke-opacity', constants["def_stroke_opacity"]))
                     stroke_width = int(shape.attrib.get('stroke-width', constants["def_stroke_width"]))
+
                     match(shape.tag):
                         case '{http://www.w3.org/2000/svg}circle':
                             cx = int(shape.attrib['cx'])
@@ -118,7 +123,11 @@ class ToolBar(QToolBar):
                                             stroke_opacity=stroke_opacity, 
                                             stroke_width=stroke_width)
 
-                            self.editor.canvas.layers[indx].figures.append(SvgShape("circle", circle, center=(cx, cy), r=r))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("circle", 
+                                                                                    circle, 
+                                                                                    center=(cx, cy), 
+                                                                                    r=r)
+                                                                                    )
                             self.editor.canvas.layers[indx].g.add(circle)
 
                         case '{http://www.w3.org/2000/svg}rect':
@@ -134,7 +143,11 @@ class ToolBar(QToolBar):
                                             stroke_opacity=stroke_opacity, 
                                             stroke_width=stroke_width)
                             
-                            self.editor.canvas.layers[indx].figures.append(SvgShape("rect", rect, insert=(x, y), size=(width, height)))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("rect", 
+                                                                                    rect, 
+                                                                                    insert=(x, y), 
+                                                                                    size=(width, height))
+                                                                                    )
                             self.editor.canvas.layers[indx].g.add(rect)
 
                         case '{http://www.w3.org/2000/svg}line':
@@ -148,7 +161,11 @@ class ToolBar(QToolBar):
                                             stroke_opacity=stroke_opacity, 
                                             stroke_width=stroke_width
                                             )
-                            self.editor.canvas.layers[indx].figures.append(SvgShape("line", line, start=(x1, y1), end=(x2, y2)))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("line", 
+                                                                                    line, 
+                                                                                    start=(x1, y1), 
+                                                                                    end=(x2, y2))
+                                                                                    )
                             self.editor.canvas.layers[indx].g.add(line)
 
                         case "{http://www.w3.org/2000/svg}polyline":
@@ -163,7 +180,10 @@ class ToolBar(QToolBar):
                                                             stroke_width=stroke_width,
                                                             stroke_opacity=stroke_opacity,
                                                             fill="none")
-                            self.editor.canvas.layers[indx].figures.append(SvgShape("polyline", polyline, points=points))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("polyline", 
+                                                                                    polyline, 
+                                                                                    points=points)
+                                                                                    )
                             self.editor.canvas.layers[indx].g.add(polyline)
 
                         case "{http://www.w3.org/2000/svg}polygon":
@@ -179,7 +199,10 @@ class ToolBar(QToolBar):
                                                             stroke_opacity=stroke_opacity,
                                                             fill=fill,
                                                             fill_opacity=fill_opacity)
-                            self.editor.canvas.layers[indx].figures.append(SvgShape("polygon", polygon, points=points))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("polygon", 
+                                                                                    polygon, 
+                                                                                    points=points)
+                                                                                    )
                             self.editor.canvas.layers[indx].g.add(polygon)
                         
                         case "{http://www.w3.org/2000/svg}text":
@@ -194,18 +217,26 @@ class ToolBar(QToolBar):
                                                         fill=fill, 
                                                         opacity=fill_opacity, 
                                                         style=style)
-                            self.editor.canvas.layers[indx].figures.append(SvgShape("text", text, font_size=font_size, insert=(x, y)))
+                            self.editor.canvas.layers[indx].figures.append(SvgShape("text", 
+                                                                                    text, 
+                                                                                    font_size=font_size, 
+                                                                                    insert=(x, y))
+                                                                                    )
                             self.editor.canvas.layers[indx].g.add(text)
+
             self.editor.drawer.layer = self.editor.canvas.layers[0]
             self.editor.drawer.layer.setStyleSheet("background: rgba(240,128,128, 1);")
-            self.editor.canvas.load(QByteArray(dwg.tostring().encode('utf-8')))
+            self.editor.canvas.refresh()
             svg =  self.editor.canvas._make_svg_from_element(self.editor.drawer.layer.g).encode('utf-8')
             self.editor.layer_bar.preview.load(QByteArray(svg))
 
-
     def on_save_as(self):
         options = QFileDialog.Options()
-        filename, _ = QFileDialog.getSaveFileName(self, "Сохранить файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
+        filename, _ = QFileDialog.getSaveFileName(self, 
+                                                  "Сохранить файл SVG", 
+                                                  "", 
+                                                  "SVG Files (*.svg);;All Files (*)", 
+                                                  options=options)
         
         if filename:
             canvas = self.editor.canvas
@@ -221,16 +252,21 @@ class ToolBar(QToolBar):
     def on_save(self):
         canvas = self.editor.canvas
         draw: Drawer = self.editor.drawer
+
         if canvas.dwg.filename == "noname.svg":
             options = QFileDialog.Options()
-            filename, _ = QFileDialog.getSaveFileName(self, "Сохранить файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
+            filename, _ = QFileDialog.getSaveFileName(self, 
+                                                      "Сохранить файл SVG", 
+                                                      "", 
+                                                      "SVG Files (*.svg);;All Files (*)", 
+                                                      options=options)
             canvas.dwg.filename = filename
 
         if draw.selected:
             canvas.dwg.elements.remove(draw.selected.params["selector"])
             draw.selected.params.pop("selector")
             draw.selected = None
-            self.editor.canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
+            self.editor.canvas.refresh()
         
         canvas.dwg.save()
 
@@ -243,7 +279,10 @@ class ToolBar(QToolBar):
         draw: Drawer = self.editor.drawer
 
         if draw.selected:
-            initial_color = list(map(int, draw.selected.obj.attribs.get("stroke", constants["def_stroke"]).strip("rgb")[1:-1].split(", ")))
+            initial_color = list(map(
+                int, draw.selected.obj.attribs.get("stroke", 
+                                                   constants["def_stroke"]).strip("rgb")[1:-1].split(", ")
+                ))
             initial_opacity = int(float(draw.selected.obj.attribs.get("stroke-opacity", 1)) * 255)
             initial_color.append(initial_opacity)
             color = dialog.getColor(options=QColorDialog.ShowAlphaChannel, initial=QColor(*initial_color))
@@ -257,8 +296,8 @@ class ToolBar(QToolBar):
         if draw.selected:
             draw.selected.obj.attribs["stroke"] = color
             draw.selected.obj.attribs["stroke-opacity"] = opacity
-            self.editor.canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
-
+            self.editor.canvas.refresh()
+            
         self.stroke_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.stroke = color
         self.editor.drawer.stroke_opacity = opacity
@@ -269,7 +308,10 @@ class ToolBar(QToolBar):
         draw: Drawer = self.editor.drawer
 
         if draw.selected:
-            initial_color = list(map(int, draw.selected.obj.attribs.get("fill", constants["def_fill"]).strip("rgb")[1:-1].split(", ")))
+            initial_color = list(map(
+                int, draw.selected.obj.attribs.get("fill", 
+                                                   constants["def_fill"]).strip("rgb")[1:-1].split(", ")
+                ))
             initial_opacity = int(float(draw.selected.obj.attribs.get("fill-opacity", 1)) * 255)
             initial_color.append(initial_opacity)
             color = dialog.getColor(options=QColorDialog.ShowAlphaChannel, initial=QColor(*initial_color))
@@ -336,88 +378,32 @@ class FiguresBar(QToolBar):
         delete_figure.clicked.connect(self.delete_figure)
         self.addWidget(delete_figure)
 
-        self.add_rect_btn.clicked.connect(self.add_rect)
-        self.add_circle_btn.clicked.connect(self.add_circle)
-        self.add_line_btn.clicked.connect(self.add_line)
-        self.add_polyline_btn.clicked.connect(self.add_polyline)
-        self.add_polygon_btn.clicked.connect(self.add_polygon)
-        self.add_text_btn.clicked.connect(self.add_text)
+        self.add_rect_btn.clicked.connect(lambda: self.add_figure("rect"))
+        self.add_circle_btn.clicked.connect(lambda: self.add_figure("circle"))
+        self.add_line_btn.clicked.connect(lambda: self.add_figure("line"))
+        self.add_polyline_btn.clicked.connect(lambda: self.add_figure("polyline"))
+        self.add_polygon_btn.clicked.connect(lambda: self.add_figure("polygon"))
+        self.add_text_btn.clicked.connect(lambda: self.add_figure("text"))
 
-        self.buttons: list[QToggleButton] = [self.add_rect_btn, 
-                                             self.add_circle_btn, 
-                                             self.add_line_btn, 
-                                             self.add_polyline_btn, 
-                                             self.add_polygon_btn,
-                                             self.add_text_btn]
+        self.buttons: dict[str, QToggleButton] = {"rect": self.add_rect_btn, 
+                                             "circle": self.add_circle_btn, 
+                                             "line": self.add_line_btn, 
+                                             "polyline": self.add_polyline_btn, 
+                                             "polygon": self.add_polygon_btn,
+                                             "text": self.add_text_btn}
 
-    def add_rect(self):
-        if self.add_rect_btn.isChecked():
-            self.add_rect_btn.setChecked(True)
-            self.editor.drawer.figure = "rect"
-        else:
-            self.add_rect_btn.setChecked(False)
-            self.editor.drawer.figure = None
-        for button in self.buttons:
-            if button != self.add_rect_btn:
-                button.setChecked(False)
+    def add_figure(self, fig_name: str):
+        if fig_name in ("polyline, polygon"):
+            self.editor.canvas.points.clear()
 
-    def add_circle(self):
-        if self.add_circle_btn.isChecked():
-            self.add_circle_btn.setChecked(True)
-            self.editor.drawer.figure = "circle"
+        if self.buttons[fig_name].isChecked():
+            self.buttons[fig_name].setChecked(True)
+            self.editor.drawer.figure = fig_name
         else:
-            self.add_circle_btn.setChecked(False)
+            self.buttons[fig_name].setChecked(False)
             self.editor.drawer.figure = None
-        for button in self.buttons:
-            if button != self.add_circle_btn:
-                button.setChecked(False)
-
-    def add_line(self):
-        if self.add_line_btn.isChecked():
-            self.add_line_btn.setChecked(True)
-            self.editor.drawer.figure = "line"
-        else:
-            self.add_line_btn.setChecked(False)
-            self.editor.drawer.figure = None
-        for button in self.buttons:
-            if button != self.add_line_btn:
-                button.setChecked(False)
-    
-    def add_polyline(self):
-        self.editor.canvas.points.clear()
-        
-        if self.add_polyline_btn.isChecked():
-            self.add_polyline_btn.setChecked(True)
-            self.editor.drawer.figure = "polyline"
-        else:
-            self.add_polyline_btn.setChecked(False)
-            self.editor.drawer.figure = None
-        for button in self.buttons:
-            if button != self.add_polyline_btn:
-                button.setChecked(False)
-
-    def add_polygon(self):
-        self.editor.canvas.points.clear()
-        
-        if self.add_polygon_btn.isChecked():
-            self.add_polygon_btn.setChecked(True)
-            self.editor.drawer.figure = "polygon"
-        else:
-            self.add_polygon_btn.setChecked(False)
-            self.editor.drawer.figure = None
-        for button in self.buttons:
-            if button != self.add_polygon_btn:
-                button.setChecked(False)
-    
-    def add_text(self):
-        if self.add_text_btn.isChecked():
-            self.add_text_btn.setChecked(True)
-            self.editor.drawer.figure = "text"
-        else:
-            self.add_text_btn.setChecked(False)
-            self.editor.drawer.figure = None
-        for button in self.buttons:
-            if button != self.add_text_btn:
+        for button in self.buttons.values():
+            if button != self.buttons[fig_name]:
                 button.setChecked(False)
 
     def delete_figure(self):
@@ -461,7 +447,9 @@ class LayerBar(QToolBar):
         self.addWidget(layer)
     
     def add_layer(self):
-        txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write new layer's name")
+        txt, ok = QInputDialog(parent=None).getText(None, 
+                                                    "Text input", 
+                                                    "Write new layer's name")
         if ok:
             self._add_layer(txt)
             
@@ -472,4 +460,3 @@ class LayerBar(QToolBar):
             self.editor.canvas.dwg.elements.remove(layer.g)
             self.editor.canvas.layers.remove(layer)
             layer.deleteLater() 
-
