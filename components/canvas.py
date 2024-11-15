@@ -1,4 +1,5 @@
-import svgwrite
+import svgwrite.shapes
+import svgwrite.text
 
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
@@ -6,6 +7,9 @@ from PyQt5.QtCore import QByteArray, QPoint
 from PyQt5.QtWidgets import QInputDialog
 from copy import copy
 from json import load
+
+import svgwrite.path
+import svgwrite.shapes
 
 from components.svg_utils import Drawer, SvgShape, Layer
 
@@ -616,19 +620,20 @@ class Canvas(QSvgWidget):
         self.dwg.add(select_rect)
     
     def edit_polyline(self, figure: SvgShape, select_rect, end: tuple[int], indx: int):
-        points = list(figure.params["points"])
-        points[indx] = end
-        figure.params["points"] = points
-        figure.obj.points = points
+        if indx is not None:
+            points = list(figure.params["points"])
+            points[indx] = end
+            figure.params["points"] = points
+            figure.obj.points = points
 
-        points = [str(p[0]) + "," + str(p[1]) for p in points]
-        points = " ".join(points)
-        figure.obj.attribs["points"] = points
+            points = [str(p[0]) + "," + str(p[1]) for p in points]
+            points = " ".join(points)
+            figure.obj.attribs["points"] = points
 
-        select_rect = self.is_polyline_clicked(figure, end)
-        self.dwg.elements.remove(figure.params["selector"])
-        figure.params["selector"] = select_rect
-        self.dwg.add(select_rect)
+            select_rect = self.is_polyline_clicked(figure, end)
+            self.dwg.elements.remove(figure.params["selector"])
+            figure.params["selector"] = select_rect
+            self.dwg.add(select_rect)
 
     def edit_figure(self, start: tuple[int], end: tuple[int], side: str):
         draw: Drawer = self.parent().drawer

@@ -63,6 +63,18 @@ class ToolBar(QToolBar):
         self.font_size.setFixedSize(100, 30)
         self.addWidget(self.font_size)
 
+        self.stroke_w_lbl = QLabel(parent=self, text="Stroke width")
+        self.stroke_w_lbl.setStyleSheet("QLabel{background-color: rgba(240,128,128, 0.8); padding: 0 10px;};")
+        self.addWidget(self.stroke_w_lbl)
+
+        self.stroke_w = QSpinBox(parent=self)
+        self.stroke_w.setMinimum(0)
+        self.stroke_w.setMaximum(1000)
+        self.stroke_w.setValue(constants["def_stroke_width"])
+        self.stroke_w.valueChanged.connect(self.change_stroke_width)
+        self.stroke_w.setFixedSize(100, 30)
+        self.addWidget(self.stroke_w)
+
     def open(self):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(self, "Открыть файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
@@ -275,7 +287,6 @@ class ToolBar(QToolBar):
 
     def change_stroke_color(self):
         dialog = QColorDialog()
-        canvas = self.editor.canvas
         draw: Drawer = self.editor.drawer
 
         if draw.selected:
@@ -304,7 +315,6 @@ class ToolBar(QToolBar):
 
     def change_fill_color(self):
         dialog = QColorDialog()
-        canvas = self.editor.canvas
         draw: Drawer = self.editor.drawer
 
         if draw.selected:
@@ -324,7 +334,7 @@ class ToolBar(QToolBar):
         if draw.selected:
             draw.selected.obj.attribs["fill"] = color
             draw.selected.obj.attribs["fill-opacity"] = opacity
-            self.editor.canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
+            self.editor.canvas.refresh()
 
         self.fill_color.setStyleSheet(f"background: {color};")
         self.editor.drawer.fill = color
@@ -337,7 +347,7 @@ class ToolBar(QToolBar):
 
         figure: SvgShape = draw.selected
 
-        if draw.selected.shape == "text":
+        if figure and figure.shape == "text":
             figure.params["font_size"] = val
             figure.obj.attribs["font-size"] = val
 
@@ -346,7 +356,21 @@ class ToolBar(QToolBar):
             canvas.dwg.add(select_rect)
             figure.params["selector"] = select_rect
 
-            canvas.load(QByteArray(self.editor.canvas.dwg.tostring().encode('utf-8')))
+            canvas.refresh()
+    
+    def change_stroke_width(self):
+        draw: Drawer = self.editor.drawer
+        canvas = self.editor.canvas
+        figure: SvgShape = draw.selected
+
+        val = self.stroke_w.value()
+
+        draw.width = val
+
+        if figure:
+            figure.obj.attribs["stroke-width"] = val
+
+            canvas.refresh()
 
 
 class FiguresBar(QToolBar):

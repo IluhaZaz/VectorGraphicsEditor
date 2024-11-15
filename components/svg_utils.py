@@ -1,4 +1,4 @@
-import svgwrite
+import svgwrite.container
 
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtCore import QPoint, QByteArray
@@ -63,7 +63,7 @@ class Layer(QPushButton):
             draw.selected = None
 
         self.parent().editor.drawer.layer = self
-        canvas.load(QByteArray(canvas.dwg.tostring().encode('utf-8')))
+        canvas.refresh()
         svg =  canvas._make_svg_from_element(draw.layer.g).encode('utf-8')
         self.parent().preview.load(QByteArray(svg))
 
