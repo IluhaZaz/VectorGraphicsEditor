@@ -21,15 +21,18 @@ TOLERANCE = constants["tolerance"]
 
 class Canvas(QSvgWidget):
 
-    def __init__(self, parent):
+    def __init__(self, parent, size: tuple[int]):
         super().__init__(parent)
-        size = (1700, 800)
+        self.setFixedSize(*size)
         self.dwg = svgwrite.Drawing(profile="full", size=size)
         self.layers: list[Layer] = []
         self.points: list[int] = []
 
-    def refresh(self):
+    def refresh(self, preview: bool = True):
         self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
+        if preview:
+            svg =  self._make_svg_from_element(self.parent().drawer.layer.g).encode('utf-8')
+            self.parent().layer_bar.preview.load(QByteArray(svg))
     
     def get_current_layer(self) -> Layer:
         return self.parent().drawer.layer
@@ -111,8 +114,8 @@ class Canvas(QSvgWidget):
                     layer.figures.append(SvgShape("text", text, insert=draw.start, font_size=font_size))
     
     def _make_svg_from_element(self, element):
-        start: str = """<?xml version='1.0' encoding='utf-8' ?>
-        <svg baseProfile='full' height='800' version='1.1' width='1700' xmlns='http://www.w3.org/2000/svg' 
+        start: str = f"""<?xml version='1.0' encoding='utf-8' ?>
+        <svg baseProfile='full' height='{self.size().height()}' version='1.1' width='{self.size().width()}' xmlns='http://www.w3.org/2000/svg' 
         xmlns:ev='http://www.w3.org/2001/xml-events' xmlns:xlink='http://www.w3.org/1999/xlink'>
         <defs />"""
         return start + element.tostring() + "</svg>"
@@ -136,8 +139,6 @@ class Canvas(QSvgWidget):
             self.select_figure(event.pos())
 
         self.refresh()
-        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
-        self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         draw: Drawer = self.parent().drawer
@@ -188,8 +189,6 @@ class Canvas(QSvgWidget):
                     figure.params["end"] = figure.obj.attribs["x2"], figure.obj.attribs["y2"]
 
             self.refresh()
-            svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
-            self.parent().layer_bar.preview.load(QByteArray(svg))
         
         elif draw.selector_side or draw.selector_point_indx is not None:
             start = draw.prev_pos.x(), draw.prev_pos.y()
@@ -246,8 +245,6 @@ class Canvas(QSvgWidget):
             
         draw.prev_pos = event.pos()
         self.refresh()
-        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
-        self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def is_polyline_clicked(self, figure: SvgShape, pos: tuple[int]):
         select_rect = None
@@ -474,8 +471,6 @@ class Canvas(QSvgWidget):
                 )
             
         self.refresh()
-        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
-        self.parent().layer_bar.preview.load(QByteArray(svg))
 
     def is_selector_clicked(self, pos: tuple[int]):
         draw: Drawer = self.parent().drawer
@@ -668,5 +663,3 @@ class Canvas(QSvgWidget):
             draw.selected = None
 
         self.refresh()
-        svg =  self._make_svg_from_element(draw.layer.g).encode('utf-8')
-        self.parent().layer_bar.preview.load(QByteArray(svg))

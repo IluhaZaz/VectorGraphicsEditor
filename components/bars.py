@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import (QToolBar,
                              QSpinBox, 
                              QLabel, 
                              QInputDialog)
-from PyQt5.QtCore import QByteArray
 from PyQt5.QtGui import QColor
 from PyQt5.QtSvg import QSvgWidget
 from json import load
@@ -75,6 +74,14 @@ class ToolBar(QToolBar):
         self.stroke_w.setFixedSize(100, 30)
         self.addWidget(self.stroke_w)
 
+        foreground = QPushButton("To foreground", self)
+        foreground.clicked.connect(self.to_foreground)
+        self.addWidget(foreground)
+
+        background = QPushButton("To background", self)
+        background.clicked.connect(self.to_background)
+        self.addWidget(background)
+
     def open(self):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(self, "Открыть файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
@@ -93,7 +100,7 @@ class ToolBar(QToolBar):
             layer_bar.clear()
 
             layer_bar.preview = QSvgWidget(layer_bar)
-            layer_bar.preview.setFixedSize(170, 80)
+            layer_bar.preview.setFixedSize(constants["preview_w"], constants["preview_h"])
             layer_bar.addWidget(layer_bar.preview)
             layer_bar.preview.setStyleSheet("background: white; border:5px solid rgba(240,128,128, 0.8);")
 
@@ -239,8 +246,6 @@ class ToolBar(QToolBar):
             self.editor.drawer.layer = self.editor.canvas.layers[0]
             self.editor.drawer.layer.setStyleSheet("background: rgba(240,128,128, 1);")
             self.editor.canvas.refresh()
-            svg =  self.editor.canvas._make_svg_from_element(self.editor.drawer.layer.g).encode('utf-8')
-            self.editor.layer_bar.preview.load(QByteArray(svg))
 
     def on_save_as(self):
         options = QFileDialog.Options()
@@ -371,6 +376,24 @@ class ToolBar(QToolBar):
             figure.obj.attribs["stroke-width"] = val
 
             canvas.refresh()
+    
+    def to_foreground(self):
+        figure: SvgShape = self.editor.drawer.selected
+        layer: Layer = self.editor.drawer.layer
+        layer.figures.remove(figure)
+        layer.figures.append(figure)
+        layer.g.elements.remove(figure.obj)
+        layer.g.elements.append(figure.obj)
+        self.editor.canvas.refresh()
+
+    def to_background(self):
+        figure: SvgShape = self.editor.drawer.selected
+        layer: Layer = self.editor.drawer.layer
+        layer.figures.remove(figure)
+        layer.figures.insert(0, figure)
+        layer.g.elements.remove(figure.obj)
+        layer.g.elements.insert(0, figure.obj)
+        self.editor.canvas.refresh()
 
 
 class FiguresBar(QToolBar):
@@ -442,7 +465,7 @@ class LayerBar(QToolBar):
         self.editor: QMainWindow = parent
 
         self.preview = QSvgWidget(self)
-        self.preview.setFixedSize(170, 80)
+        self.preview.setFixedSize(constants["preview_w"], constants["preview_h"])
         self.addWidget(self.preview)
         self.preview.setStyleSheet("background: white; border:5px solid rgba(240,128,128, 0.8);")
 

@@ -1,7 +1,7 @@
 import svgwrite.container
 
 from PyQt5.QtWidgets import QPushButton
-from PyQt5.QtCore import QPoint, QByteArray
+from PyQt5.QtCore import QPoint
 from json import load
 
 
@@ -64,8 +64,6 @@ class Layer(QPushButton):
 
         self.parent().editor.drawer.layer = self
         canvas.refresh()
-        svg =  canvas._make_svg_from_element(draw.layer.g).encode('utf-8')
-        self.parent().preview.load(QByteArray(svg))
 
         self.setStyleSheet("background: rgba(240,128,128, 1);")
         for layer in canvas.layers:

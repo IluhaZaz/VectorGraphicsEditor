@@ -5,5 +5,7 @@
     "def_stroke_width": 3,
     "def_stroke_opacity": 1,
     "def_fill_opacity": 1,
-    "def_font_size": 24
+    "def_font_size": 24,
+    "preview_w": 170,
+    "preview_h": 80
 }
