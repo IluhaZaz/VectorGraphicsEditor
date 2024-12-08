@@ -7,5 +7,7 @@
     "def_fill_opacity": 1,
     "def_font_size": 24,
     "preview_w": 170,
-    "preview_h": 80
+    "preview_h": 80,
+    "load_bth_w": 300,
+    "load_bth_h": 150
 }

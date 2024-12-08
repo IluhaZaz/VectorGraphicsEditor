@@ -1,10 +1,14 @@
+from json import load
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
 from PyQt5.QtCore import Qt
 
-from components.svg_utils import Drawer
+from components.svg_utils import Drawer, LoadingMenu
 from components.bars import FiguresBar, ToolBar, LayerBar
 from components.canvas import Canvas
 
+
+with open('constants.json', 'r') as f:
+    constants = load(f)
 
 class VectorGraphicsEditor(QMainWindow):
 
@@ -55,4 +59,45 @@ class Ui_MainWindow:
                                               """)
         main_window.layer_bar.setStyleSheet("""QToolBar{background: rgba(0, 0, 0, 0.6); border:2px solid rgba(240,128,128, 0.8);}
                                               """)
-        
+
+class LoadingWindow(QMainWindow):
+    def __init__(self, main_window, ui_main_setuper):
+        super().__init__()
+
+        self.main_window: VectorGraphicsEditor = main_window
+        self.ui_main_setuper: Ui_MainWindow = ui_main_setuper
+
+        self.central_widget: QWidget
+        self.loading_menu: LoadingMenu
+    
+    def end_loading(self, open_existing: bool = False):
+        self.ui_main_setuper.setup_ui(self.main_window)
+        self.close()
+        self.main_window.show()
+
+        if open_existing:
+            self.main_window.tool_bar.open()
+
+
+class Ui_LoadingWindow:
+    
+    def setup_ui(self, loading_window: LoadingWindow):
+        loading_window.setWindowTitle("VectorCanvas - loading_window")
+
+        loading_window.setWindowState(Qt.WindowFullScreen)
+
+        loading_window.central_widget = QWidget()
+        loading_window.setCentralWidget(loading_window.central_widget)
+
+        loading_window.loading_menu = LoadingMenu(loading_window)
+        max_size = QApplication.primaryScreen().size()
+        loading_window.loading_menu.setGeometry((max_size.width() - constants['load_bth_w'])//2, 
+                                                (max_size.height() - constants['load_bth_h']*3)//2,
+                                                constants['load_bth_w'], 
+                                                constants['load_bth_h']*3)
+
+        loading_window.central_widget.setStyleSheet("background: rgba(0, 0, 0, 0.8);border:50px solid rgba(240,128,128, 0.8);")
+        loading_window.loading_menu.setStyleSheet("""QWidget{background: rgba(0, 0, 0, 0.6); border:2px solid rgba(240,128,128, 0.8);}
+                                                    QPushButton{background: rgba(240,128,128, 0.8);""" + f"width: {constants['load_bth_w']}px; height: {constants['load_bth_h']}px"+  
+                                                    ";}"
+                                                )

@@ -271,7 +271,6 @@ class Canvas(QSvgWidget):
             except ZeroDivisionError:
                 continue
             if distance_to_line <= TOLERANCE:
-                print(f"Polyine selected: points={points}")
                 is_clicked = True
 
         if is_clicked:
@@ -292,7 +291,6 @@ class Canvas(QSvgWidget):
             (end[1] - start[1]) * pos[0] - (end[0] - start[0]) * pos[1] + end[0] * start[1] - end[1] * start[0]
             ) / ((end[1] - start[1])**2 + (end[0] - start[0])**2) ** 0.5
         if distance_to_line <= TOLERANCE:
-            print(f"Line selected: start={start}, end={end}")
 
             if start[0] > end[0]:
                 if start[1] > end[1]:
@@ -375,7 +373,6 @@ class Canvas(QSvgWidget):
         center = figure.params["center"]
         r = figure.params['r']
         if ((center[0] - pos[0]) ** 2 + (center[1] - pos[1]) ** 2) ** 0.5 <= r:
-            print(f"Circle selected: center={center}, radius={r}")
 
             tl_select = center[0] - r, center[1] - r
             select_size = (2*r, 2*r)
@@ -392,7 +389,6 @@ class Canvas(QSvgWidget):
         top_left = figure.params['insert']
         size = figure.params['size']
         if top_left[0] <= pos[0] <= top_left[0] + size[0] and top_left[1] <= pos[1] <= top_left[1] + size[1]:
-            print(f"Rectangle selected: top_left={top_left}, size={size}")
 
             tl_select = top_left[0] - 10, top_left[1] - 10
             select_size = (size[0] + 20, size[1] + 20)

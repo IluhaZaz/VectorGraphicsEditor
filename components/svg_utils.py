@@ -1,6 +1,6 @@
 import svgwrite.container
 
-from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QPushButton, QWidget, QVBoxLayout, QInputDialog
 from PyQt5.QtCore import QPoint
 from json import load
 
@@ -71,3 +71,32 @@ class Layer(QPushButton):
                 layer.setStyleSheet("background: rgba(240,128,128, 0.8);")
 
         return super().mousePressEvent(e)
+
+
+class LoadingMenu(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        self.editor = parent
+        layout = QVBoxLayout()
+        layout.setSpacing(5)
+
+        open_btn = QPushButton("Open existing file", self)
+        create_btn = QPushButton("Create new file", self)
+        close_btn = QPushButton("Close application", self)
+
+        layout.addWidget(open_btn)
+        layout.addWidget(create_btn)
+        layout.addWidget(close_btn)
+
+        self.setLayout(layout)
+
+        close_btn.clicked.connect(self.close_app)
+        create_btn.clicked.connect(self.create_f)
+        open_btn.clicked.connect(self.open_f)
+
+    def close_app(self):
+        self.editor.close()
+
+    def open_f(self):
+        self.editor.end_loading(open_existing=True)
