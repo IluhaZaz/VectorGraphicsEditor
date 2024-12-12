@@ -97,6 +97,16 @@ class LoadingMenu(QWidget):
 
     def close_app(self):
         self.editor.close()
+    
+    def create_f(self):
+        txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write size of new canvas")
+        if ok:
+            if txt == "":
+                size = (-1, -1)
+            else:
+                size = txt.split()
+                size = tuple(map(int, size))
+            self.editor.end_loading(size=size)
 
     def open_f(self):
         self.editor.end_loading(open_existing=True)

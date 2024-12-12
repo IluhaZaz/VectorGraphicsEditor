@@ -277,6 +277,9 @@ class ToolBar(QToolBar):
                                                       "", 
                                                       "SVG Files (*.svg);;All Files (*)", 
                                                       options=options)
+            if not filename:
+                return
+            
             canvas.dwg.filename = filename
 
         if draw.selected:
@@ -378,6 +381,8 @@ class ToolBar(QToolBar):
             canvas.refresh()
     
     def to_foreground(self):
+        if not self.editor.drawer.selected:
+            return
         figure: SvgShape = self.editor.drawer.selected
         layer: Layer = self.editor.drawer.layer
         layer.figures.remove(figure)
@@ -387,6 +392,8 @@ class ToolBar(QToolBar):
         self.editor.canvas.refresh()
 
     def to_background(self):
+        if not self.editor.drawer.selected:
+            return
         figure: SvgShape = self.editor.drawer.selected
         layer: Layer = self.editor.drawer.layer
         layer.figures.remove(figure)
