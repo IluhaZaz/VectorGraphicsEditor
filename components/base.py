@@ -82,6 +82,7 @@ class LoadingWindow(QMainWindow):
     def end_loading(self, size: tuple[int] = None, open_existing: bool = False):
         self.ui_main_setuper.setup_ui(self.main_window)
         self.close()
+        self.main_window.show()
         if size and size != (-1, -1):
             if size[0] == -1:
                 self.main_window.canvas.setFixedHeight(size[1])
@@ -98,7 +99,6 @@ class LoadingWindow(QMainWindow):
 
         elif open_existing:
             self.main_window.tool_bar.open()
-        self.main_window.show()
 
 
 class Ui_LoadingWindow:

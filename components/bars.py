@@ -93,7 +93,6 @@ class ToolBar(QToolBar):
 
             self.editor.canvas.dwg = dwg
             self.editor.canvas.layers = []
-            self.editor.canvas.points = []
 
             elements = []
             layer_bar = self.parent().layer_bar
@@ -107,6 +106,13 @@ class ToolBar(QToolBar):
             layer_bar.add_layer_bnt = QPushButton(parent=layer_bar, text="Add layer")
             layer_bar.add_layer_bnt.clicked.connect(layer_bar.add_layer)
             layer_bar.addWidget(layer_bar.add_layer_bnt)
+
+            new_size = int(root.attrib["width"]), int(root.attrib["height"])
+            self.editor.canvas.setFixedSize(*new_size)
+            self.editor.canvas.dwg.attribs = {'width': new_size[0], 'height': new_size[1]}
+
+            preview_size = new_size[0]//7, new_size[1]//7
+            self.editor.layer_bar.preview.setFixedSize(*preview_size)
 
             num = 0
             for shape in root:
@@ -448,7 +454,7 @@ class FiguresBar(QToolBar):
 
     def add_figure(self, fig_name: str):
         if fig_name in ("polyline, polygon"):
-            self.editor.canvas.points.clear()
+            self.editor.canvas.started_polyline = False
 
         if self.buttons[fig_name].isChecked():
             self.buttons[fig_name].setChecked(True)

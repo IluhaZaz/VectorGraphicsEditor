@@ -5,7 +5,6 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, QPoint
 from PyQt5.QtWidgets import QInputDialog
-from copy import copy
 from json import load
 
 import svgwrite.path
@@ -26,7 +25,7 @@ class Canvas(QSvgWidget):
         self.setFixedSize(*size)
         self.dwg = svgwrite.Drawing(profile="full", size=size)
         self.layers: list[Layer] = []
-        self.points: list[int] = []
+        self.started_polyline: bool = False
 
     def refresh(self, preview: bool = True):
         self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
@@ -75,31 +74,35 @@ class Canvas(QSvgWidget):
                 layer.figures.append(SvgShape("line", line, start=start, end=(end[0] + 1, end[1] + 1)))
             
             case "polyline":
-                if self.points:
-                    layer.g.elements.remove(layer.figures.pop(-1).obj)
-                self.points.append(end)
+                if self.started_polyline:
+                    layer.figures[-1].obj.points.append(end)
+                    layer.figures[-1].params["points"].append(end)
 
-                polyline = svgwrite.shapes.Polyline(points=self.points, 
-                                                    stroke=draw.stroke,
-                                                    stroke_width=draw.width,
-                                                    stroke_opacity=draw.stroke_opacity,
-                                                    fill="none")
-                layer.g.add(polyline)
-                layer.figures.append(SvgShape("polyline", polyline, points=copy(self.points)))
+                else:
+                    self.started_polyline = True
+                    polyline = svgwrite.shapes.Polyline(points=[end],
+                                                        stroke=draw.stroke,
+                                                        stroke_width=draw.width,
+                                                        stroke_opacity=draw.stroke_opacity,
+                                                        fill="none")
+                    layer.g.add(polyline)
+                    layer.figures.append(SvgShape("polyline", polyline, points=[end]))
             
             case "polygon":
-                if self.points:
-                    layer.g.elements.remove(layer.figures.pop(-1).obj)
-                self.points.append(end)
+                if self.started_polyline:
+                    layer.figures[-1].obj.points.append(end)
+                    layer.figures[-1].params["points"].append(end)
 
-                polygon = svgwrite.shapes.Polygon(points=self.points, 
-                                                    stroke=draw.stroke,
-                                                    stroke_width=draw.width,
-                                                    stroke_opacity=draw.stroke_opacity,
-                                                    fill = draw.fill,
-                                                    fill_opacity=draw.fill_opacity,)
-                layer.g.add(polygon)
-                layer.figures.append(SvgShape("polygon", polygon, points=copy(self.points)))
+                else:
+                    self.started_polyline = True
+                    polygon = svgwrite.shapes.Polygon(points=[end], 
+                                                        stroke=draw.stroke,
+                                                        stroke_width=draw.width,
+                                                        stroke_opacity=draw.stroke_opacity,
+                                                        fill = draw.fill,
+                                                        fill_opacity=draw.fill_opacity,)
+                    layer.g.add(polygon)
+                    layer.figures.append(SvgShape("polygon", polygon, points=[end]))
             
             case "text":
                 txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write text to display it")
@@ -593,7 +596,11 @@ class Canvas(QSvgWidget):
     def edit_line(self, figure: SvgShape, select_rect, start: tuple[int], end: tuple[int]):
         center = figure.params["end"]
         left = (center[0] - start[0])**2 + (center[1] - start[1])**2
+
+        is_changed: bool = False
         if left <= TOLERANCE**2:
+            is_changed = True
+
             figure.obj.attribs["x2"] = end[0]
             figure.obj.attribs["y2"] = end[1]
             figure.params["end"] = end
@@ -601,14 +608,17 @@ class Canvas(QSvgWidget):
         center = figure.params["start"]
         left = (center[0] - start[0])**2 + (center[1] - start[1])**2
         if left <= TOLERANCE**2:
+            is_changed = True
+
             figure.obj.attribs["x1"] = end[0]
             figure.obj.attribs["y1"] = end[1]
             figure.params["start"] = end
         
-        select_rect = self.is_line_clicked(figure, end)
-        self.dwg.elements.remove(figure.params["selector"])
-        figure.params["selector"] = select_rect
-        self.dwg.add(select_rect)
+        if is_changed:
+            select_rect = self.is_line_clicked(figure, end)
+            self.dwg.elements.remove(figure.params["selector"])
+            figure.params["selector"] = select_rect
+            self.dwg.add(select_rect)
     
     def edit_polyline(self, figure: SvgShape, select_rect, end: tuple[int], indx: int):
         if indx is not None:
