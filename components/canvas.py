@@ -667,5 +667,7 @@ class Canvas(QSvgWidget):
             layer.g.elements.remove(figure.obj)
             layer.figures.remove(figure)
             draw.selected = None
+            draw.selector_point_indx = None
+            draw.selector_side = None
 
         self.refresh()

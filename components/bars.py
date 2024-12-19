@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (QToolBar,
 from PyQt5.QtGui import QColor
 from PyQt5.QtSvg import QSvgWidget
 from json import load
+from copy import deepcopy
 
 from components.svg_utils import SvgShape, Drawer, QToggleButton, Layer
 
@@ -82,6 +83,10 @@ class ToolBar(QToolBar):
         background.clicked.connect(self.to_background)
         self.addWidget(background)
 
+        copy = QPushButton("Copy element", self)
+        copy.clicked.connect(self.copy)
+        self.addWidget(copy)
+
     def open(self):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(self, "Открыть файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
@@ -91,6 +96,7 @@ class ToolBar(QToolBar):
 
             dwg = svgwrite.Drawing(profile='full', size=self.editor.drawer.size, filename=filename)
 
+            self.editor.drawer.selected = None
             self.editor.canvas.dwg = dwg
             self.editor.canvas.layers = []
 
@@ -406,6 +412,19 @@ class ToolBar(QToolBar):
         layer.figures.insert(0, figure)
         layer.g.elements.remove(figure.obj)
         layer.g.elements.insert(0, figure.obj)
+        self.editor.canvas.refresh()
+
+    def copy(self):
+        if not self.editor.drawer.selected:
+            return
+        figure: SvgShape = self.editor.drawer.selected
+        layer: Layer = self.editor.drawer.layer
+
+        copied_figure = deepcopy(figure)
+
+        layer.figures.append(copied_figure)
+        layer.g.elements.append(copied_figure.obj)
+        
         self.editor.canvas.refresh()
 
 

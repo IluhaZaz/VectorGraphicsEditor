@@ -83,19 +83,22 @@ class LoadingWindow(QMainWindow):
         self.ui_main_setuper.setup_ui(self.main_window)
         self.close()
         self.main_window.show()
+
         if size and size != (-1, -1):
+            preview_size = size[0]//7, size[1]//7
+            
             if size[0] == -1:
                 self.main_window.canvas.setFixedHeight(size[1])
                 self.main_window.canvas.dwg.attribs['height'] = size[1]
+                self.main_window.layer_bar.preview.setFixedHeight(preview_size[1])
             elif size[1] == -1:
                 self.main_window.canvas.setFixedWidth(size[0])
                 self.main_window.canvas.dwg.attribs['width'] = size[0]
+                self.main_window.layer_bar.preview.setFixedWidth(preview_size[0])
             else:
                 self.main_window.canvas.setFixedSize(size[0], size[1])
                 self.main_window.canvas.dwg.attribs = {'width': size[0], 'height': size[1]}
-
-            preview_size = size[0]//7, size[1]//7
-            self.main_window.layer_bar.preview.setFixedSize(*preview_size)
+                self.main_window.layer_bar.preview.setFixedSize(*preview_size)
 
         elif open_existing:
             self.main_window.tool_bar.open()
