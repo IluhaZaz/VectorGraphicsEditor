@@ -1,5 +1,5 @@
 from json import load, dump
-from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
+from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QScrollArea, QVBoxLayout
 from PyQt5.QtCore import Qt
 
 from components.svg_utils import Drawer, LoadingMenu
@@ -35,6 +35,14 @@ class Ui_MainWindow:
         max_size = QApplication.primaryScreen().size()
         main_window.canvas = Canvas(main_window, (max_size.width() - 10, max_size.height() - 50))
         main_window.canvas.move(10, 50)
+
+        layout = QVBoxLayout(main_window.central_widget)
+
+        scroll_area = QScrollArea()
+        layout.addWidget(scroll_area)
+
+        scroll_area.setWidget(main_window.canvas)
+        scroll_area.setWidgetResizable(True)
 
         preview_size = max_size.width()//7, max_size.height()//7
         with open("constants.json", 'r+') as f:

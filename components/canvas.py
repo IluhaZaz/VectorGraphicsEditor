@@ -4,7 +4,7 @@ import svgwrite.text
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, QPoint
-from PyQt5.QtWidgets import QInputDialog
+from PyQt5.QtWidgets import QInputDialog, QMainWindow
 from json import load
 
 import svgwrite.path
@@ -26,18 +26,19 @@ class Canvas(QSvgWidget):
         self.dwg = svgwrite.Drawing(profile="full", size=size)
         self.layers: list[Layer] = []
         self.started_polyline: bool = False
+        self.editor: QMainWindow = parent
 
     def refresh(self, preview: bool = True):
         self.load(QByteArray(self.dwg.tostring().encode('utf-8')))
         if preview:
-            svg =  self._make_svg_from_element(self.parent().drawer.layer.g).encode('utf-8')
-            self.parent().layer_bar.preview.load(QByteArray(svg))
+            svg =  self._make_svg_from_element(self.editor.drawer.layer.g).encode('utf-8')
+            self.editor.layer_bar.preview.load(QByteArray(svg))
     
     def get_current_layer(self) -> Layer:
-        return self.parent().drawer.layer
+        return self.editor.drawer.layer
 
     def add_figure(self, start: tuple[int], end: tuple[int]):
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
         layer: Layer = self.get_current_layer()
 
         match draw.figure:
@@ -107,7 +108,7 @@ class Canvas(QSvgWidget):
             case "text":
                 txt, ok = QInputDialog(parent=None).getText(None, "Text input", "Write text to display it")
                 if ok:
-                    font_size = self.parent().tool_bar.font_size.value()
+                    font_size = self.editor.tool_bar.font_size.value()
                     text = svgwrite.text.Text(text=txt, 
                                               insert=draw.start, 
                                               fill=draw.stroke, 
@@ -125,10 +126,10 @@ class Canvas(QSvgWidget):
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         pos = event.pos().x(), event.pos().y()
-        self.parent().drawer.start = pos
-        self.parent().drawer.prev_pos = event.pos()
+        self.editor.drawer.start = pos
+        self.editor.drawer.prev_pos = event.pos()
 
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
 
         draw.selector_side = self.is_selector_clicked(pos)
         if draw.selected:
@@ -144,7 +145,7 @@ class Canvas(QSvgWidget):
         self.refresh()
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
         layer: Layer = self.get_current_layer()
         if draw.figure:
             figure: SvgShape = layer.figures[-1]
@@ -448,7 +449,7 @@ class Canvas(QSvgWidget):
         return res_fig, select_rect
 
     def select_figure(self, pos: QPoint):
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
 
         if draw.selected:
             self.dwg.elements.remove(draw.selected.params["selector"])
@@ -462,17 +463,17 @@ class Canvas(QSvgWidget):
             self.dwg.add(select_rect)
             draw.selected.params["selector"] = select_rect
 
-            self.parent().tool_bar.stroke_color.setStyleSheet(
+            self.editor.tool_bar.stroke_color.setStyleSheet(
                 f"background: {figure.obj.attribs.get('stroke', constants['def_stroke'])};"
                 )
-            self.parent().tool_bar.fill_color.setStyleSheet(
+            self.editor.tool_bar.fill_color.setStyleSheet(
                 f"background: {figure.obj.attribs.get('fill', constants['def_fill'])};"
                 )
             
         self.refresh()
 
     def is_selector_clicked(self, pos: tuple[int]):
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
         if not draw.selected:
             return None
         
@@ -637,7 +638,7 @@ class Canvas(QSvgWidget):
             self.dwg.add(select_rect)
 
     def edit_figure(self, start: tuple[int], end: tuple[int], side: str):
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
         select_rect = draw.selected.params["selector"]
 
         dx = end[0] - start[0]
@@ -659,7 +660,7 @@ class Canvas(QSvgWidget):
                 self.edit_polyline(figure, select_rect, end, draw.selector_point_indx)
 
     def delete_figure(self, figure: SvgShape):
-        draw: Drawer = self.parent().drawer
+        draw: Drawer = self.editor.drawer
         layer: Layer = self.get_current_layer()
 
         if draw.selected is not None:
