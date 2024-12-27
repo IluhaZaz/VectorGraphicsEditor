@@ -1,4 +1,5 @@
 from json import load, dump
+
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QScrollArea, QVBoxLayout
 from PyQt5.QtCore import Qt
 

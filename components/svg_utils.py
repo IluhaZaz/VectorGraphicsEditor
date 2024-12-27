@@ -106,6 +106,10 @@ class LoadingMenu(QWidget):
             else:
                 size = txt.split()
                 size = tuple(map(int, size))
+
+                if size[0] < -1 or size[1] < -1:
+                    return
+
             self.editor.end_loading(size=size)
 
     def open_f(self):

@@ -4,11 +4,28 @@
 #
 #    pip-compile
 #
+altgraph==0.17.4
+    # via pyinstaller
+packaging==24.2
+    # via
+    #   pyinstaller
+    #   pyinstaller-hooks-contrib
+pefile==2023.2.7
+    # via pyinstaller
+pyinstaller==6.11.1
+    # via -r requirements.in
+pyinstaller-hooks-contrib==2024.11
+    # via pyinstaller
 pyqt5==5.15.11
     # via -r requirements.in
 pyqt5-qt5==5.15.2
     # via pyqt5
 pyqt5-sip==12.15.0
     # via pyqt5
+pywin32-ctypes==0.2.3
+    # via pyinstaller
 svgwrite==1.4.3
     # via -r requirements.in
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools

@@ -89,7 +89,7 @@ class ToolBar(QToolBar):
 
     def open(self):
         options = QFileDialog.Options()
-        filename, _ = QFileDialog.getOpenFileName(self, "Открыть файл SVG", "", "SVG Files (*.svg);;All Files (*)", options=options)
+        filename, _ = QFileDialog.getOpenFileName(self, "Открыть файл SVG", "", "SVG Files (*.svg);", options=options)
         if filename:
             tree = ET.parse(filename)
             root = tree.getroot()

@@ -37,7 +37,7 @@ class Canvas(QSvgWidget):
     def get_current_layer(self) -> Layer:
         return self.editor.drawer.layer
 
-    def add_figure(self, start: tuple[int], end: tuple[int]):
+    def add_figure(self, start: tuple[int], end: tuple[int]) -> None:
         draw: Drawer = self.editor.drawer
         layer: Layer = self.get_current_layer()
 
@@ -144,7 +144,7 @@ class Canvas(QSvgWidget):
 
         self.refresh()
 
-    def mouseMoveEvent(self, event: QMouseEvent | None):
+    def mouseMoveEvent(self, event: QMouseEvent | None) -> None:
         draw: Drawer = self.editor.drawer
         layer: Layer = self.get_current_layer()
         if draw.figure:
@@ -403,7 +403,7 @@ class Canvas(QSvgWidget):
                                     )
         return select_rect
             
-    def find_clicked_figure(self, pos: QPoint):
+    def find_clicked_figure(self, pos: QPoint) -> tuple[SvgShape, svgwrite.shapes.Rect]:
         layer: Layer = self.get_current_layer()
         
         select_rect = None
