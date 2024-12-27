@@ -4,9 +4,14 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 
 from components.base import VectorGraphicsEditor, Ui_MainWindow, LoadingWindow, Ui_LoadingWindow
+from protection import check
 
 
 if __name__ == "__main__":
+
+    if not check():
+        exit()
+
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icons/app_icon.png"))
     

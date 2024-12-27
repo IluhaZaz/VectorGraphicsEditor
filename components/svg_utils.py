@@ -1,3 +1,5 @@
+import os
+
 import svgwrite.container
 
 from PyQt5.QtWidgets import QPushButton, QWidget, QVBoxLayout, QInputDialog
@@ -5,7 +7,9 @@ from PyQt5.QtCore import QPoint
 from json import load
 
 
-with open('constants.json', 'r') as f:
+base_dir = os.path.dirname(os.path.abspath("window.py"))
+data_file_path = os.path.join(base_dir, "_internal", "constants.json")
+with open(data_file_path, 'r') as f:
     constants = load(f)
 
 class SvgShape:

@@ -5,16 +5,12 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import QByteArray, QPoint
 from PyQt5.QtWidgets import QInputDialog, QMainWindow
-from json import load
 
 import svgwrite.path
 import svgwrite.shapes
 
-from components.svg_utils import Drawer, SvgShape, Layer
+from components.svg_utils import Drawer, SvgShape, Layer, constants
 
-
-with open('constants.json', 'r') as f:
-    constants = load(f)
 
 TOLERANCE = constants["tolerance"]
 
