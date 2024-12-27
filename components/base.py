@@ -4,12 +4,10 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QScrollArea, QVB
 from PyQt5.QtCore import Qt
 
 from components.svg_utils import Drawer, LoadingMenu
+from components.svg_utils import constants, data_file_path
 from components.bars import FiguresBar, ToolBar, LayerBar
 from components.canvas import Canvas
 
-
-with open('constants.json', 'r') as f:
-    constants = load(f)
 
 class VectorGraphicsEditor(QMainWindow):
 
@@ -46,7 +44,7 @@ class Ui_MainWindow:
         scroll_area.setWidgetResizable(True)
 
         preview_size = max_size.width()//7, max_size.height()//7
-        with open("constants.json", 'r+') as f:
+        with open(data_file_path, 'r+') as f:
             data = load(f)
             data["preview_w"] = preview_size[0]
             data["preview_h"] = preview_size[1]

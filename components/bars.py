@@ -11,14 +11,10 @@ from PyQt5.QtWidgets import (QToolBar,
                              QInputDialog)
 from PyQt5.QtGui import QColor
 from PyQt5.QtSvg import QSvgWidget
-from json import load
 from copy import deepcopy
 
-from components.svg_utils import SvgShape, Drawer, QToggleButton, Layer
+from components.svg_utils import SvgShape, Drawer, QToggleButton, Layer, constants
 
-
-with open('constants.json', 'r') as f:
-    constants = load(f)
 
 class ToolBar(QToolBar):
 
